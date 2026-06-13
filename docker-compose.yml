@@ -1,0 +1,147 @@
+# Relay — local development orchestration
+#
+# Layout assumption: all repos are cloned as SIBLINGS of relay-dev, e.g.
+#   Hackon/
+#   ├── relay-dev/        <- you are here (run docker compose from here)
+#   ├── relay-api/
+#   ├── relay-engine/
+#   ├── relay-ml/
+#   └── relay-web/
+#
+# Usage:
+#   docker compose up -d                 # infra only (postgres + redis) — use this now
+#   docker compose --profile apps up -d  # infra + app services (once each repo has a Dockerfile)
+#
+# App services live behind the "apps" profile so they don't try to build
+# repos that aren't scaffolded yet. Uncomment / enable as each repo is ready.
+
+name: relay
+
+services:
+  # ---------------------------------------------------------------------------
+  # Infrastructure — available NOW
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: relay-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-relay}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-relay}
+      POSTGRES_DB: ${POSTGRES_DB:-relay}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-relay} -d ${POSTGRES_DB:-relay}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: relay-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ---------------------------------------------------------------------------
+  # Application services — enable with: docker compose --profile apps up -d
+  # Each requires a Dockerfile in its repo. Enable one at a time as it's ready.
+  # ---------------------------------------------------------------------------
+  relay-ml:
+    profiles: ["apps"]
+    build:
+      context: ../relay-ml
+    container_name: relay-ml
+    ports:
+      - "8001:8001"
+    env_file:
+      - path: ../relay-ml/.env
+        required: false
+    environment:
+      PORT: 8001
+    restart: unless-stopped
+
+  relay-engine:
+    profiles: ["apps"]
+    build:
+      context: ../relay-engine
+    container_name: relay-engine
+    ports:
+      - "8002:8002"
+    environment:
+      PORT: 8002
+      DATABASE_URL: postgres://${POSTGRES_USER:-relay}:${POSTGRES_PASSWORD:-relay}@postgres:5432/${POSTGRES_DB:-relay}?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  relay-api:
+    profiles: ["apps"]
+    build:
+      context: ../relay-api
+    container_name: relay-api
+    ports:
+      - "8000:8000"
+    env_file:
+      - path: ../relay-api/.env
+        required: false
+    environment:
+      PORT: 8000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-relay}:${POSTGRES_PASSWORD:-relay}@postgres:5432/${POSTGRES_DB:-relay}
+      REDIS_URL: redis://redis:6379/0
+      ML_SERVICE_URL: http://relay-ml:8001
+      ENGINE_SERVICE_URL: http://relay-engine:8002
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  relay-worker:
+    profiles: ["apps"]
+    build:
+      context: ../relay-api
+    container_name: relay-worker
+    command: ["celery", "-A", "app.worker", "worker", "--loglevel=info"]
+    env_file:
+      - path: ../relay-api/.env
+        required: false
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-relay}:${POSTGRES_PASSWORD:-relay}@postgres:5432/${POSTGRES_DB:-relay}
+      REDIS_URL: redis://redis:6379/0
+      ML_SERVICE_URL: http://relay-ml:8001
+      ENGINE_SERVICE_URL: http://relay-engine:8002
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  relay-web:
+    profiles: ["apps"]
+    build:
+      context: ../relay-web
+    container_name: relay-web
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+    depends_on:
+      - relay-api
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redisdata:
