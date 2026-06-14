@@ -22,6 +22,40 @@
 
 ---
 
+## Run / Restart (local) — backend + infra + seed
+
+> All repos are cloned as siblings; run `docker compose` from `relay-dev/`. On Windows use `127.0.0.1` (not `localhost`) for host→container calls — Docker Desktop's IPv6 (`::1`) proxy black-holes.
+
+```bash
+cd relay-dev
+
+# 1) Start ALL backend services + infra
+#    (postgres[pgvector] + redis + relay-ml + relay-engine + relay-api + relay-worker)
+docker compose --profile apps up -d --build
+#    infra ONLY (postgres + redis): omit the profile →  docker compose up -d
+
+# 2) Apply DB migrations (schema → head = 0005)
+docker compose exec relay-api alembic upgrade head
+
+# 3) Seed real demo data (DB + LifeLedger + S3 product images)
+docker compose exec relay-api python -m scripts.seed
+#    …or the equivalent canonical endpoint:  POST http://127.0.0.1:8010/demo/reset
+
+# 4) (optional) end-to-end smoke check  → expect: SMOKE_OK
+docker compose exec relay-api python scripts/smoke.py
+
+# Health:  http://127.0.0.1:8010/health (api) · :8001 (ml) · :8002 (engine)
+# Frontend (run separately):  cd relay-web ; npm install ; npm run dev  → http://localhost:3000
+```
+
+**Notes**
+- **Real Bedrock grading:** set `GRADING_MODE=bedrock_only` (compose default is `mock`); AWS creds live in `relay-ml/.env`. `/embed`, `/wish-score`, `/fit-flags` use Bhavya's real models regardless of mode.
+- **S3 seeding** needs S3 creds in `relay-api/.env` (bucket `relay-media-s3`, `us-east-1`); product/listing images upload there as public URLs.
+- **Frontend → API:** point relay-web at `VITE_API_URL=http://127.0.0.1:8010` (the compose `relay-web` default `http://localhost:8000` is stale).
+- **Full wipe & restart:** `docker compose down -v` (drops the pg volume) → repeat steps 1–3.
+
+---
+
 ## 1. Problem Statement (verbatim summary)
 
 Millions of returned, underused, or discarded products are still usable. Returns hurt customers, sellers, and the planet. Trust in refurbished/second-hand is low.
