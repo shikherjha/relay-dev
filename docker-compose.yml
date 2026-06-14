@@ -62,7 +62,10 @@ services:
       context: ../relay-ml
     container_name: relay-ml
     ports:
-      - "8001:8001"
+      # IPv4-only publish: Docker Desktop's IPv6 ([::]) proxy black-holes on this
+      # host, so `localhost` (→ ::1) hangs. Binding 0.0.0.0 drops the :: listener
+      # → `localhost` fails fast over IPv6 and clients fall back to 127.0.0.1.
+      - "0.0.0.0:8001:8001"
     env_file:
       - path: ../relay-ml/.env
         required: false
@@ -79,7 +82,7 @@ services:
       context: ../relay-engine
     container_name: relay-engine
     ports:
-      - "8002:8002"
+      - "0.0.0.0:8002:8002"
     environment:
       PORT: 8002
       DATABASE_URL: postgres://${POSTGRES_USER:-relay}:${POSTGRES_PASSWORD:-relay}@postgres:5432/${POSTGRES_DB:-relay}?sslmode=disable
@@ -94,7 +97,9 @@ services:
       context: ../relay-api
     container_name: relay-api
     ports:
-      - "${RELAY_API_PORT:-8010}:8010"
+      # IPv4-only publish (see relay-ml note) so the browser's localhost:8010
+      # doesn't hang on Docker Desktop's black-holing IPv6 proxy.
+      - "0.0.0.0:${RELAY_API_PORT:-8010}:8010"
     env_file:
       - path: ../relay-api/.env
         required: false

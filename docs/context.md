@@ -18,7 +18,7 @@
 | **Product name (working)** | **Relay** (see §15 for alternates) |
 | **Platform** | Web-first (desktop/laptop demo priority) |
 | **Demo categories** | Fashion + Electronics (dual vertical demo) |
-| **Last updated** | 2026-06-14 (Session 7 — Track B: Second Life) |
+| **Last updated** | 2026-06-15 (Session 8 — Track C: return-grading decisions) |
 
 ---
 
@@ -512,6 +512,7 @@ Shikher's disposition engine consumes passport JSON; never raw images in busines
 | 2026-06-14 | Session 6: plan updated — bracketing P0, ops persona, carbon constants, pgvector T1, Bedrock-only grading | Build T1 |
 | 2026-06-14 | Session 6b: + demand-weighted disposition, wish-score (Bhavya), Pair Rescue (T2), seller signals, rescue decay pricing; bracketing ≥3; embeddings → Bhavya | Build T1 |
 | 2026-06-14 | Session 7: **Track B (Second Life) specced** in plan.md §19 — `grade-and-price` contract, `resale_listings`/orders data model, all-real `seed_assets/` seeding, seller/buyer UX; ML(Bedrock)+backend+frontend+seeding flipped to done on task board | Deploy (AWS/Railway/CI) + demo video + submission |
+| 2026-06-15 | Session 8: **Track C — Return-grading decisions built** (plan.md §20): size/fit return = pristine asset (Grade-A boost + minimal-discount Path-A listing); next-owner size-match gate (size eq OR fit confidence > 0.7); cheap prompt-only expected-context `verification` (additive `expected_size/color/title` → locked `verification` block on ConditionPassport + ResaleListing, **relay-ml prompt change flagged for Bhavya**, relay-api fallback); `wrong_item` fully gated (flagged return-to-seller, no grade/anchor/listing) + pick-pack seller signal; in-window `POST /orders/items/{id}/exchange` (no ML grade, replacement line + pristine returned unit → Path-A rescue + `EXCHANGED`). Additive migration 0005; seed + smoke extended → SMOKE_OK | Deploy (AWS/Railway/CI) + demo video + submission |
 
 ---
 

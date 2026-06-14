@@ -92,6 +92,14 @@ Copy status into PR descriptions. **Definition of Done (DoD)** = code merged + a
 | trackb-seed-assets | T2 | Shikher | `seed_assets/` real product manifest + images served statically; `/demo/reset` builds full REAL DB + LifeLedger (catalogue, orders, returns, refurb, listings, passports, credits) (§19.7) | in progress |
 | web-second-life | **UI phase** | Shikher | Buyer Second Life catalogue page + Second Life section on landing below the motto (§19.9) | in progress |
 | web-seller-shell | **UI phase** | Shikher | Seller persona lands on Ops; nav = Ops + order tracking; returned/REFURBISHED units show "relist for resale" upload (§19.8) | in progress |
+| **— Track C — Return-grading decisions (§20) —** | | | | |
+| trackc-size-pristine | T2 | Shikher | Size/fit return = pristine asset: floor resale grade to A / "Like New", clear cosmetic defects, disposition/pricing at MINIMAL discount (§20.1) | ✅ done |
+| trackc-size-gate | T2 | Shikher | Next-owner size-match gate in `matching.py`: candidate passes only if unit size == wish size OR fit_profile confidence > 0.7 (PRD §7) (§20.2) | ✅ done |
+| trackc-verification | T2 | Both | Expected-context verification: relay-api sends `expected_size/color/title`; relay-ml enriches the grade prompt → additive `verification` block (no extra image/call); surfaced on ConditionPassport + ResaleListing; relay-api fallback (§20.3) | ✅ done (relay-ml prompt change flagged for Bhavya) |
+| trackc-wrong-item | T2 | Shikher | `wrong_item` fully gated: flagged `return_to_seller`, no grade/passport/GRADED/listing; `_REASON_FIX` pick-pack seller signal (§20.4) | ✅ done |
+| trackc-exchange | T2 | Shikher | `POST /orders/items/{id}/exchange`: in-window, no ML grade; replacement line (`exchanged_from_id`) + pristine returned unit → Path-A rescue at original/minimal discount + `EXCHANGED` event (§20.5) | ✅ done |
+| trackc-db-0005 | T2 | Shikher | Additive migration 0005: `product_units.size`, `order_items.return_state`, `order_items.exchanged_from_id` (`verification` lives in passport JSON) (§20.6) | ✅ done |
+| trackc-seed-smoke | T2 | Shikher | Seed: size-pristine rescue, `wrong_item` flagged + ops signal, completed exchange (EXCHANGED + pending pickup); `scripts/smoke.py` asserts all five → SMOKE_OK (§20.7) | ✅ done |
 | deploy-aws | T2 | Shikher | ECS/RDS/S3 deploy path | pending |
 | deploy-railway | T2 | Shikher | Railway compose backup + seeded demo | pending |
 | demo-video | T2 | Both | Record 3-min walkthrough on Railway/AWS | pending |
@@ -349,12 +357,15 @@ This is server-side env only — **no contract change**. `bedrock_only` is a *re
 | Method | Path | Request | Response |
 |---|---|---|---|
 | GET | `/health` | — | `{ "status": "ok", "model_loaded": true }` |
-| POST | `/grade-image` | `multipart: image`, `unit_id`, `category` | `ConditionPassport` |
+| POST | `/grade-image` | `multipart: image`, `unit_id`, `category`, **`expected_size?`, `expected_color?`, `product_title?`** (additive — §20) | `ConditionPassport` (+ optional `verification`) |
+| POST | `/grade-images` | `multipart: images[1–8]`, `unit_id`, `category`, **`expected_*?`** | `ConditionPassport` (+ optional `verification`) |
 | POST | `/grade-video` | `multipart: video` OR `keyframes[]`, `unit_id` | `ConditionPassport` |
 | POST | `/fit-flags` | `{ "sku_id", "brand?", "category?" }` | `{ "flags": [...], "confidence" }` |
 | POST | `/embed` | `{ "text"? , "category"?, "grade"?, "size"?, "vertical"? }` | `{ "vector": [float × 384], "model": "..." }` |
 | POST | `/wish-score` | `{ "wish_age_days", "user_purchase_count", "category_affinity", "has_fit_profile" }` | `{ "score": 0.0–1.0, "model": "logreg_v1" }` |
-| POST | `/grade-and-price` | `multipart: images[1–8]` OR `video`, `unit_id`, `category`, `original_price`, `age_days`, `vertical?` | `ConditionPassport` + resale fields (`resale_grade`, `price_range`, `currency`, `pricing_rationale`) — see response below + §8 B4.2 |
+| POST | `/grade-and-price` | `multipart: images[1–8]` OR `video`, `unit_id`, `category`, `original_price`, `age_days`, `vertical?`, **`expected_*?`** | `ConditionPassport` + resale fields (`resale_grade`, `price_range`, `currency`, `pricing_rationale`) (+ optional `verification`) — see response below + §8 B4.2 |
+
+> **`expected_*` + `verification` are ADDITIVE (Session 8, §20) — flagged for Bhavya.** All three `expected_*` Form fields are optional; when omitted the prompt and response are byte-for-byte the old behaviour. When present, the **same** grade prompt (no second image, no extra Bedrock call) is asked to ALSO report `observed_color` / `color_match` / `item_match`, returned as a `verification: { color_match, item_match, observed_color?, expected_color? }` block (states: `match|mismatch|unknown`). relay-api fills a best-effort `verification` if relay-ml omits it.
 
 **Fit flags response shape:**
 
@@ -429,6 +440,8 @@ list_price       = mean(price_range)        # = base ; this is what relay-api li
 | POST | `/demo/reset` | Re-seed (hidden) — canonical seeder; writes REAL DB + ledger (§19.7) |
 | GET | `/orders` | Order history; items add `delivered_at`, `returnable`, `resellable`, `days_to_return_deadline` (Track B §19.2) |
 | POST | `/orders/items/{order_item_id}/resell` | Buyer resells an out-of-window owned item (multipart files) → `resale_listings` `source=p2p`; calls grade-and-price (§19.4) |
+| POST | `/orders/items/{order_item_id}/return` | Order-line return `{ reason, pickup_slot? }` → `ReturnEvent`. **`wrong_item` is fully GATED** → flagged `return_to_seller`, no grade/passport/listing (§20) |
+| POST | `/orders/items/{order_item_id}/exchange` | In-window exchange `{ new_size?, new_variant?, pickup_slot? }` → `ExchangeResult { exchange_id, replacement{order_item_id,size,variant,title}, rescue_listing{id,list_price,...} }`. NO ML grade; pristine returned unit → Path-A rescue + `EXCHANGED` event (§20) |
 | GET | `/second-life` | Combined Second Life catalogue (p2p + certified) (§19.4) |
 | POST | `/second-life/{listing_id}/buy` | Stub checkout — escrow `held→released`, ownership transfer, `P2P_SOLD` ledger event (§19.3) |
 | GET | `/seller/refurbished` | Seller's relist-eligible REFURBISHED units (§19.8) |
@@ -1428,6 +1441,77 @@ No client-side mocks. The demo runs entirely off seeded **real** Postgres + Life
 
 ---
 
+## §20 Return-grading decisions (Session 8)
+
+> **Status:** built + verified on the live stack (smoke `SMOKE_OK`). Five product decisions on *how a return is graded and where it goes*. All additive — existing flows, contracts, and the LifeLedger hash are unchanged unless the new inputs are supplied.
+
+### §20.1 Size-return = pristine asset (grade boost + minimal discount)
+
+A return whose `reason ∈ {too_small, too_large, fit}` (and **not** `defective` / `not_as_described`) was never used — it just didn't fit. So on the **return-grade path** we treat it as pristine:
+
+- **Grade boost** (`services/grading.py::apply_pristine_size_boost`): floor the resale grade to **Grade A / "Like New"** (`size_return_pristine_grade=A`, numeric `0.9`) if the model graded it lower, **clear cosmetic defects**, set `packaging_state=sealed`, and steer `disposition_hint=p2p_resale`. Applied to the `ConditionPassport` **before** hashing, so the anchored hash covers the boosted grade.
+- **Minimal discount** (`routers/returns.py::compute_disposition` → `services/rescue.py::create_listing_for_disposition(discount_pct=…)`): a size return is re-listed at only `size_return_minimal_discount_pct=0.07` (near original price), **never** the deep rescue markdown. The `discount_pct` override also **forces Path A** (local pickup-anchored) so a neighbour can intercept it before it leaves.
+
+### §20.2 Next-owner size-match gate (PRD §7 "size match OR fit confidence > 0.7")
+
+`services/matching.py` previously filtered only on cosine + geo + price. Added a hard **size gate**: when a wish specifies a `size`, a candidate unit passes only if
+
+```
+unit.size == wish.size   OR   fit_confidence(wisher, category) > 0.7
+```
+
+`fit_confidence` = `matching_fit_profile_confidence` (0.8) when the wisher has a stored `fit_profile` entry for that category's axis (`tops` / `bottoms` / `shoes`), else `0.0`. So a confident wisher can still match an inexact size; everyone else needs an exact match. `unit.size` now flows through checkout, returns, and exchange (see §20.6) and is surfaced on `WishMatch.size`.
+
+### §20.3 Expected-context verification (cheap, prompt-fields-only)
+
+Chosen over the costly catalogue-image compare. **No second image, no extra Bedrock call.**
+
+- **relay-api** (`grading.py`, `resale.py`) sends the order's `expected_size` (`order_item.size`), `expected_color` (`order_item.variant` or `product_metadata.color`), and `product_title` (`Product.title`) as **optional multipart Form fields** to the grade endpoints.
+- **relay-ml (ADDITIVE — flagged for Bhavya):** `bedrock_tiers.py` appends a verification suffix to the **same** grade prompt only when expected context is present, asking the model to also report `observed_color` / `color_match` / `item_match`. `grade_mock`, `grade_bedrock_only`, and `grade_multi_image_bedrock` build the block; omitted context ⇒ byte-for-byte the old behaviour.
+- **Shape (LOCKED — frontend reads it on `ConditionPassport` AND `ResaleListing`):**
+
+```json
+"verification": {
+  "color_match": "match" | "mismatch" | "unknown",
+  "item_match":  "match" | "mismatch" | "unknown",
+  "observed_color": "string?",
+  "expected_color": "string?"
+}
+```
+
+- **Persistence:** stored inside the existing `condition_passports.passport` JSON (no new column); surfaced on `ResaleListing.verification` via `resale.py::_passport_verification`.
+- **relay-api fallback** (`grading.py::ensure_verification`): if relay-ml omits `verification`, relay-api attaches a best-effort one (`color_match` computed only if the passport exposes an observed colour, else `unknown`).
+
+### §20.4 `wrong_item` — fully gated
+
+When `reason == "wrong_item"` the buyer got the wrong product — there is nothing to grade. The flow (`routers/returns.py` and `services/order_actions.py::record_order_item_return`) **records a flagged return and stops**: status `flagged`, `order_items.return_state = "return_to_seller"`, and **no** grade-endpoint call, **no** `ConditionPassport`, **no** `GRADED` LifeLedger anchor, **no** unit status mutation, **no** rescue/disposition/second-life listing. `wrong_item` (and `not_as_described`) added to `_REASON_FIX` in `routers/ops.py` → surfaces a seller fulfilment signal: *"audit pick-pack accuracy + SKU-to-bin mapping"*.
+
+### §20.5 Exchange flow (in-window, no ML grade)
+
+`POST /orders/items/{order_item_id}/exchange` body `{ new_size?, new_variant?, pickup_slot? }` → `ExchangeResult` (`services/order_actions.py::exchange_order_item`). Allowed **only within the return window**:
+
+1. **No ML grading.** Mint a **replacement** order + line for the new size/variant on the same product, linked back via `order_items.exchanged_from_id`; anchor a `PURCHASED` event on the replacement unit.
+2. **Returned unit → pristine** via a deterministic Grade A / "Like New" passport (`model_tier_used=exchange-pristine`); `order_items.return_state = "exchanged"`; anchor an **`EXCHANGED`** LifeLedger event (not `GRADED`).
+3. **Auto-list on Path-A rescue** at `exchange_minimal_discount_pct=0.05` (≈ original price), pickup-anchored TTL, so a local buyer can intercept before pickup → cuts the warehouse round-trip. Records an `exchange` `ImpactEvent`.
+
+### §20.6 DB — migration `0005_return_grading_decisions` (additive)
+
+Purely additive on top of 0004 (no drops/retypes → applies cleanly on the seeded DB):
+
+| Column | Purpose |
+|---|---|
+| `product_units.size` (String) | physical size of the unit → powers the §20.2 size-match gate |
+| `order_items.return_state` (String) | post-return disposition: `return_to_seller` (wrong_item) / `exchanged` |
+| `order_items.exchanged_from_id` (UUID FK→order_items) | replacement line links back to the original |
+
+The `verification` block needs no column — it lives in `condition_passports.passport` (§20.3).
+
+### §20.7 Seed + smoke
+
+`/demo/reset` now also seeds: **(a)** a `too_small` size-return live on rescue as a **Grade A, 7%-discount** listing; **(b)** two `wrong_item` **flagged** backpack records (no passport/listing) that dominate the ops seller-signals; **(c)** a completed **exchange** — returned unit live on rescue at ≈ original price with an `EXCHANGED` event + pending pickup, plus a size-11 sneaker that the size-match gate filters out. New `/demo/reset` counts: `wrong_item_flagged`, `exchanges`, `size_return_unit`, `exchange_unit`, `gate_mismatch_unit`. `scripts/smoke.py` asserts all five decisions (pristine grade + minimal discount, gate filtering, `verification` on a graded return + ResaleListing, `wrong_item` → nothing created + ops signal, exchange → replacement + rescue + `EXCHANGED`) while keeping every prior assertion green → **SMOKE_OK**.
+
+---
+
 ## Sequencing summary
 
 ```
@@ -1456,3 +1540,5 @@ M4 (stretch) — T3
 *Last updated: 2026-06-14 (Session 6 — bracketing(≥3), ops persona, carbon constants, pgvector-T1, Bedrock-only grading; + demand-weighted disposition, wish-score, Pair Rescue, seller signals, rescue decay pricing; embeddings/wish-score assigned to Bhavya) · Maintained alongside [`context.md`](./context.md)*
 
 *Session 7 — **Track B (Second Life: resell + republish)** added (§19); new relay-ml `POST /grade-and-price` contract for Bhavya (§5 + §8 B4.2); resale pricing unified with rescue + `price_fit` (§19.6); `resale_listings` / `order_items.delivered_at` / `products.image_url` data model (§6); real `seed_assets/` seeding spec (§19.7); seller/buyer UX (§19.8–19.9). Task board: all ML(Bedrock) / backend / seeding / frontend-migration rows flipped to ✅ done; Track B rows added as specced/in-progress; **deploy + demo + submission left pending (honest).***
+
+*Session 8 — **Track C — Return-grading decisions** added (§20), backend built to the LOCKED frontend shapes: (1a) size/fit return = pristine asset → Grade-A boost + minimal-discount Path-A listing; (1b) next-owner size-match gate in `matching.py` (size eq OR fit confidence > 0.7); (2) expected-context `verification` — additive `expected_size/color/title` Form fields enrich the **same** grade prompt (no extra image/call — **relay-ml change flagged for Bhavya**) → locked `verification` block on ConditionPassport + ResaleListing, with a relay-api fallback; (3) `wrong_item` fully gated (flagged return-to-seller, no grade/anchor/listing) + pick-pack seller signal; (4) new `POST /orders/items/{id}/exchange` (in-window, no ML grade, replacement line + pristine returned unit → Path-A rescue + `EXCHANGED` event). Additive migration `0005` (`product_units.size`, `order_items.return_state`, `order_items.exchanged_from_id`; `verification` in passport JSON). Seed + `scripts/smoke.py` extended for all five → **SMOKE_OK**. Task board: Track C rows ✅ done.*
