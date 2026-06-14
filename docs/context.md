@@ -127,6 +127,8 @@ Score each returned unit across channels:
 - **Recycle** — end of life
 - **Exchange** — same SKU swap (size/color) faster than full return cycle
 
+**Demand-weighted (Session 6b):** the scorer folds in **open Reverse Wishlist demand** (Σ wish_score × geo_decay) so routing is pulled toward `rescue`/`p2p` where real local demand exists — disposition becomes optimization, not a static rule. **Pair Rescue** is the extreme case: A↔B bipartite swap when two returns satisfy each other's wishes.
+
 **Industry:** Optoro, ReturnPro, Ciclo, G2RL DecisionAI, McKinsey "single AI-driven decision engine."
 
 **Research:**
@@ -271,7 +273,7 @@ Amazon has **B2C resale** (Renewed, Resale, Trade-In) but NOT **C2C resale with 
 
 #### User-level insights (UI mockup ideas)
 - **Fit Profile:** "You return 72% of Size M in brand X — we recommend L"
-- **Bracketing detector:** "You have 3 sizes of same item in cart — did you mean to bracket?"
+- **Bracketing detector (P0/T1 — promoted Session 6):** "You have 3 sizes of same item in cart — keep the one that fits (we suggest L)." Active interceptor at checkout, the single most citable prevention signal (~40% of fashion returns). Advisory, never blocks.
 - **Category risk:** "Electronics returns are rare for you; fashion is your friction point"
 - **Exchange nudge:** Myntra already offers extra discount if you **exchange instead of return** — we formalize this with AI
 
@@ -474,6 +476,20 @@ Shikher's disposition engine consumes passport JSON; never raw images in busines
 | 2026-06-13 | UI: **Own Relay brand**, not Amazon clone | Winner pattern (Odyssey, GreenCart) | ✅ Accepted |
 | 2026-06-13 | Datasets locked for Bhavya + seed scripts | HF defects + Kaggle fit + synthetic demo | ✅ Accepted |
 | 2026-06-13 | **Multi-repo (4+contracts)**, not monorepo | Parallel work; Bhavya owns relay-ml exclusively | ✅ Accepted |
+| 2026-06-14 | **Bracketing interceptor → P0/T1** (was optional) | ~40% of fashion returns; most citable, data-rich prevention; active not passive | ✅ Accepted |
+| 2026-06-14 | **Ops/seller dashboard** as 2nd persona (T2) | PS says "ecosystem"; two-perspective demos win; cheap over existing data | ✅ Accepted |
+| 2026-06-14 | **Hard-coded carbon constants** (rescue=2.4 kg) | "Simple formula" too vague for judges; anchor to ~15M t US-returns CO₂ stat | ✅ Accepted |
+| 2026-06-14 | **pgvector matching → T1** (was optional T2) | Matching is a hero of the pitch; real vector search > geo-only; Shikher prod experience | ✅ Accepted |
+| 2026-06-14 | **`GRADING_MODE=bedrock_only` escape hatch** | Real grades without trained CNN; demo-safe; distinct from Shikher's mock client | ✅ Accepted |
+| 2026-06-14 | relay-ml T0 reviewed — good to go | Clean FastAPI skeleton + reproducible datasets; minor passport contract drift to fix | ✅ Accepted |
+| 2026-06-14 | Bracketing threshold = **≥3** (strict) | Avoid false positives on legit 2-item buys; matches "3 sizes" narrative | ✅ Accepted |
+| 2026-06-14 | **Embeddings owned by Bhavya** (relay-ml `/embed`) | Even work distribution; keeps relay-api lean; ML depth on his side | ✅ Accepted |
+| 2026-06-14 | **Demand-weighted disposition** (wishes as routing input) | Turns disposition into real optimization, not static lookup | ✅ Accepted |
+| 2026-06-14 | **Wish confidence scoring** (Bhavya logreg) | Non-trivial matching; ranks by buyer intent | ✅ Accepted |
+| 2026-06-14 | **Pair Rescue promoted T3 → T2** | Most genuinely circular flow; memorable 20s; bipartite match, seedable in ~3h | ✅ Accepted |
+| 2026-06-14 | **Seller-side return-signal aggregation** | Reactive → proactive ("fix your photos"); infrastructure framing | ✅ Accepted |
+| 2026-06-14 | **Rescue decay pricing** (TTL → discount) | Recovery-value optimization; price-clock demo visual; one Go formula | ✅ Accepted |
+| 2026-06-14 | **Build order: backend-first, UI last** | Schema → endpoints → flow → wire logic → UI; frontend wired only once backend is ready | ✅ Accepted |
 
 ---
 
@@ -486,6 +502,10 @@ Shikher's disposition engine consumes passport JSON; never raw images in busines
 | 2026-06-13 | Session 3: MVP features locked, risk audit, HackOn winner research, approach validated | Tech stack; implementation |
 | 2026-06-13 | Session 4: tech stack locked, HLD, datasets, demo UI, Lego tiers; pre-plan.md | plan.md; repo init |
 | 2026-06-13 | Session 5: **`plan.md` created** — full technical plan for Shikher + Bhavya + agents | GitHub repos; implementation |
+| 2026-06-14 | 5 repos initialized + pushed; contracts v1 (schemas + OpenAPI) merged; relay-dev compose | Shikher T1 implementation |
+| 2026-06-14 | Bhavya relay-ml T0 done (FastAPI skeleton, /health, fit-flags rules, dataset tooling) — reviewed | Passport contract align; CNN/Bedrock grading |
+| 2026-06-14 | Session 6: plan updated — bracketing P0, ops persona, carbon constants, pgvector T1, Bedrock-only grading | Build T1 |
+| 2026-06-14 | Session 6b: + demand-weighted disposition, wish-score (Bhavya), Pair Rescue (T2), seller signals, rescue decay pricing; bracketing ≥3; embeddings → Bhavya | Build T1 |
 
 ---
 
@@ -674,6 +694,13 @@ High-impact additions not fully explored in Session 1:
 2. **Exchange-first auto-route** (fashion) ✅ LOCKED
 3. **Warranty chain on LifeLedger** (electronics) ✅ LOCKED
 
+**Session 6b — promoted/added to the build (see plan.md §7):**
+- **Pair Rescue** (#4 above) → **T2**, was T3. Bipartite A↔B swap, the most circular flow in the system.
+- **Demand-weighted disposition** — Reverse Wishlist bids become an *input* to routing, not just a post-match alert.
+- **Wish confidence scoring** — rank matches by buyer intent (Bhavya logreg).
+- **Seller-side return-signal aggregation** — "this SKU has 34% returns, reason: color mismatch → fix photos." Reactive → proactive.
+- **Rescue decay pricing** — discount rises as TTL drops; countdown becomes a price clock.
+
 ---
 
 ## 21. Risk Audit — Cons, Failure Modes & Guardrails
@@ -770,6 +797,8 @@ High-impact additions not fully explored in Session 1:
 - Greenwashing if credits aren't tied to verified outcomes
 
 **Guardrails:** Credits for **kept** rescues, exchanges (avoiding return trip), and **net CO₂ reduction** — never for purchase volume. Show Impact Wallet as *reduction vs baseline*, not badges for consumption.
+
+**Concrete carbon numbers (locked for demo, see plan.md §7):** anchor to ~**15M metric tons CO₂** from US returns/yr (Optoro / reverse-logistics research). Per-channel saved (kg CO₂e): rescue **2.4**, exchange 1.8, p2p 3.1, refurb 2.0, donate 1.5, recycle 0.6. Net formula subtracts `delivery_km × 0.12`. These are hard-coded, shown on the passport/Impact Wallet, and power the Rescue net-carbon gate (only show rescue when net > 0).
 
 ---
 
@@ -898,16 +927,18 @@ That's a **different category** from GreenCart-style eco-shopping.
 | # | Feature | Demo priority |
 |---|---|---|
 | 1 | Fit Intelligence + checkout insight | P0 — fashion prevention |
-| 2 | Return intake + photo/video grade → Condition Passport | P0 |
-| 3 | Disposition engine (exchange / rescue / P2P / refurb / donate) | P0 |
-| 4 | **Return Rescue** (geo + TTL + guardrails) | P0 — hero demo moment |
-| 5 | **Reverse Wishlist** → match alert | P0 |
-| 6 | **Exchange-first** routing (fashion) | P0 |
-| 7 | **P2P one-click list** + escrow flow | P1 — second demo tab |
-| 8 | **Warranty chain** on LifeLedger (electronics) | P1 |
-| 9 | LifeLedger on-chain verify (QR) | P1 |
-| 10 | Green credits (keep-based, not volume) | P2 — supporting |
-| 11 | Impact Wallet (net CO₂) | P2 |
+| 2 | **Bracketing interceptor** (≥3 sizes same item at checkout, strict) | P0 — most citable prevention (~40% returns) |
+| 3 | Return intake + photo/video grade → Condition Passport (CNN or `bedrock_only`) | P0 |
+| 4 | Disposition engine (exchange / rescue / P2P / refurb / donate) | P0 |
+| 5 | **Return Rescue** (geo + TTL + guardrails) | P0 — hero demo moment |
+| 6 | **Reverse Wishlist** → pgvector match alert | P0 |
+| 7 | **Exchange-first** routing (fashion) | P0 |
+| 8 | **Ops/seller dashboard** (flagged SKUs + rescue TTL + chain depth) | P1 — 2nd persona |
+| 9 | **P2P one-click list** + escrow flow | P1 — second demo tab |
+| 10 | **Warranty chain** on LifeLedger (electronics) | P1 |
+| 11 | LifeLedger on-chain verify (QR) | P1 |
+| 12 | Green credits (keep-based, not volume) | P2 — supporting |
+| 13 | Impact Wallet (net CO₂, hard-coded constants) | P2 |
 
 ### Build philosophy: Iterative Lego (NOT permanent exclusions)
 
@@ -917,8 +948,8 @@ Features previously labeled "out of scope" are **Phase 2/3 add-ons** — stacked
 |---|---|---|---|
 | **T0 — Shell** | Hours 0–12 | Next UI, auth stub, browse/return flows, mock grade API | Still have navigable product |
 | **T1 — Core** | Hours 12–30 | Real CNN+Bedrock grade, rule-based disposition, Rescue feed, exchange-first | Full fashion demo path works |
-| **T2 — Differentiators** | Hours 30–42 | Reverse Wishlist match, P2P list, LifeLedger QR verify, warranty chain | T1 demo unchanged |
-| **T3 — Stretch** | Hours 42–48+ | RL optimizer hook, Pair Rescue, donation routing, ClickHouse analytics | Ignore for pitch; T2 is the win |
+| **T2 — Differentiators** | Hours 30–42 | Reverse Wishlist match, demand-weighted disposition, Pair Rescue, rescue decay pricing, seller signals/ops, P2P list, LifeLedger QR verify, warranty chain | T1 demo unchanged |
+| **T3 — Stretch** | Hours 42–48+ | RL optimizer hook, donation routing, return-reason NLP clustering, ClickHouse analytics | Ignore for pitch; T2 is the win |
 
 **Previously "out of scope" → now phased:**
 
@@ -927,7 +958,7 @@ Features previously labeled "out of scope" are **Phase 2/3 add-ons** — stacked
 | Full RL disposition optimizer | T3 | Start with rule engine + weights; swap in RL later via same interface |
 | Live Amazon APIs | Never in hackathon | Seed data + "integration-ready" adapter pattern |
 | Mobile native app | Post-hackathon | Web responsive covers demo |
-| Pair Rescue | T3 | Matching engine extensible from Reverse Wishlist |
+| Pair Rescue | **T2** (Session 6b) | Bipartite A↔B swap; extends Reverse Wishlist matching |
 | Donation routing | T3 | Disposition enum already includes `DONATE` |
 | Full SizeFlags model | T1 stub → T2+ | Rules + ModCloth data first; ML flags second |
 

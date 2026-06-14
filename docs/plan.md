@@ -27,30 +27,51 @@
 
 Copy status into PR descriptions. **Definition of Done (DoD)** = code merged + acceptance criteria met + demo path still works at declared tier.
 
+> **Build order — backend-first, UI last (LOCKED Session 6c).** Shikher builds in this sequence regardless of tier labels:
+> **1) schema** (DB migrations + contracts) → **2) API endpoint design** (route signatures, request/response) → **3) high-level flow** (services talk: return → grade → disposition → match → credits) → **4) wire all logic** (real engine/ML/persistence, integration-tested via API) → **5) UI last** — all `web-*` tasks are **deferred to a final UI phase**; when the design is ready, Shikher only wires the existing backend to it. Tier labels on `web-*` rows indicate which backend tier they pair with, not when they're built. T1/T2 acceptance is validated via API + integration tests until the UI phase.
+
 | id | tier | owner | content | status |
 |---|---|---|---|---|
-| contracts-v1 | T0 | Shikher | Publish `relay-contracts` v1: ConditionPassport JSON schema, OpenAPI for relay-ml + relay-api public routes | pending |
-| repo-scaffold | T0 | Shikher | Create 5 GitHub repos, branch `main`, `relay-dev` docker-compose, README per repo | pending |
-| ml-dataset | T0 | Bhavya | Download HF e-commerce defects + Kaggle fit dataset; document in `relay-ml/data/README.md` | pending |
-| ml-health | T0 | Bhavya | `relay-ml`: FastAPI skeleton, `GET /health`, Docker, `.env.example` | pending |
+| contracts-v1 | T0 | Shikher | Publish `relay-contracts` v1: ConditionPassport JSON schema, OpenAPI for relay-ml + relay-api public routes | ✅ done |
+| contracts-embed | T0 | Both | Add `/embed` + `/wish-score` to relay-ml OpenAPI; vector + wish-score schemas | pending |
+| repo-scaffold | T0 | Shikher | Create 5 GitHub repos, branch `main`, `relay-dev` docker-compose, README per repo | ✅ done (repos + compose + relay-dev README) |
+| ml-dataset | T0 | Bhavya | Download HF e-commerce defects + Kaggle fit dataset; document in `relay-ml/data/README.md` | ✅ done (branch `feat/ml-dataset`) |
+| ml-health | T0 | Bhavya | `relay-ml`: FastAPI skeleton, `GET /health`, Docker, `.env.example` | ✅ done (merge PR #1 → main) |
 | api-skeleton | T0 | Shikher | `relay-api`: FastAPI skeleton, Postgres + Redis docker, Alembic init | pending |
 | engine-skeleton | T0 | Shikher | `relay-engine`: Go chi/fiber skeleton, `GET /health` | pending |
-| web-shell | T0 | Shikher | `relay-web`: Next + shadcn layout, nav, placeholder routes | pending |
+| db-schema | T0 | Shikher | Alembic migration v1 — all §6 tables + pgvector extension (schema-first, before endpoints) | pending |
+| web-shell | **UI phase** | Shikher | `relay-web`: Next + shadcn — **deferred to final UI phase** (backend-first) | deferred |
 | ml-grade-image | T1 | Bhavya | `POST /grade-image` → ConditionPassport (CNN baseline + optional Bedrock T2) | pending |
+| ml-bedrock-only | T1 | Bhavya | `GRADING_MODE=bedrock_only` escape hatch — real ConditionPassport via Nova Lite from image, **no CNN** (demo-safe; T2 cost/req) | pending |
 | ml-grade-video | T1 | Bhavya | `POST /grade-video` → keyframe pipeline + aggregated passport | pending |
 | ml-fit-flags | T1 | Bhavya | `POST /fit-flags` → article flags (rules stub → MultiFlags stretch) | pending |
 | ml-confidence | T1 | Bhavya | Return `confidence` + `model_tier_used`; document escalation threshold | pending |
+| ml-passport-align | T0 | Bhavya | Align Pydantic `ConditionPassport` to `relay-contracts` v1 (add `schema_version`, `packaging_state=missing`, `vertical` enum, optional vs required) | pending |
 | api-returns | T1 | Shikher | Return intake API, S3 upload, call relay-ml, persist passport | pending |
 | api-mock-ml | T1 | Shikher | Mock ML client until Bhavya URL live; swap via `ML_SERVICE_URL` | pending |
 | engine-disposition | T1 | Shikher | Go: `POST /disposition/score` — rule engine (exchange/rescue/p2p/…) | pending |
 | engine-rescue-ttl | T1 | Shikher | Go: Rescue listing TTL + geo radius scoring | pending |
 | api-rescue | T1 | Shikher | Rescue feed + claim APIs; guardrails v1 (eligibility, chain cap) | pending |
 | api-exchange | T1 | Shikher | Exchange-first routing when reason=size + SKU in stock | pending |
-| api-seed | T1 | Shikher | `scripts/seed.py` — users, catalog, wishes, demo geo | pending |
+| api-bracketing | T1 | Shikher | Bracketing detection: flag cart/checkout when ≥3 size/variant of same product (strict); expose on cart insight | pending |
+| ml-embed | T1 | Bhavya | `POST /embed` → 384-d vector from passport attrs / wish text (sentence-transformer or Bedrock Titan) | pending |
+| api-embeddings | T1 | Shikher | Call relay-ml `/embed`; persist `product_units.embedding` + `reverse_wishlist.embedding`; pgvector cosine index | pending |
+| engine-match-vector | T1 | Shikher | Go/SQL cosine match: unit ↔ wishlist via pgvector ANN (real matching, not geo-only) | pending |
+| api-seed | T1 | Shikher | `scripts/seed.py` — users, catalog, wishes, demo geo, bracketing carts | pending |
 | web-checkout-insight | T1 | Shikher | Fit insight banner on PDP/checkout (fashion) | pending |
+| web-bracketing | T1 | Shikher | Active bracketing interceptor at checkout (warn + fit suggestion, not passive) | pending |
 | web-return-wizard | T1 | Shikher | Return flow: reason → upload → grade result → outcome | pending |
 | web-rescue-feed | T1 | Shikher | Rescue cards + countdown TTL | pending |
-| api-wishlist | T2 | Shikher | Reverse Wishlist CRUD + match on return graded | pending |
+| api-wishlist | T2 | Shikher | Reverse Wishlist CRUD + pgvector match on return graded (uses `api-embeddings`) | pending |
+| ml-wish-score | T2 | Bhavya | Wish confidence score (logistic reg on wish-age, user purchase history, category affinity) → ranking input | pending |
+| engine-demand-weight | T2 | Shikher | Disposition scoring weights open-wish demand (wishlist as routing input, not post-match lookup) | pending |
+| engine-pair-rescue | T2 | Shikher | Pair Rescue: bipartite A↔B swap match (each return satisfies other's wish, geo-bounded) — promoted from T3 | pending |
+| engine-rescue-decay | T2 | Shikher | Rescue decay pricing: discount rises as TTL drops (time-decay formula); countdown = price clock | pending |
+| api-seller-signals | T2 | Shikher | Seller-side return-signal aggregation per SKU+reason → catalog-fix recommendation (surfaced on ops) | pending |
+| ml-return-cluster | T3 | Bhavya | Stretch: cluster free-text return reasons (NLP) to power seller signals beyond reason codes | pending |
+| api-ops-dashboard | T2 | Shikher | Ops API: high-return SKUs (relay-ml flagged), live rescue TTL list, chain-depth view, seller signals | pending |
+| web-ops-dashboard | T2 | Shikher | Ops/seller view: flagged SKUs table + return-reason insight + rescue TTL countdown + chain depth | pending |
+| api-impact | T2 | Shikher | Impact Wallet net CO₂ via hard-coded per-channel constants (see §7 Carbon model) | pending |
 | api-p2p | T2 | Shikher | One-click P2P list + escrow stub | pending |
 | api-warranty | T2 | Shikher | Warranty chain records on electronics units | pending |
 | api-lifeledger | T2 | Shikher | Polygon Amoy write + QR verify endpoint | pending |
@@ -113,17 +134,24 @@ Copy status into PR descriptions. **Definition of Done (DoD)** = code merged + a
 | Feature | Description |
 |---|---|
 | **Fit Intelligence** | Checkout/PDP insight: user fit profile + article flags; exchange nudge — not scary "23% return risk" |
-| **Return + grade** | Photo upload → Condition Passport JSON |
+| **Bracketing interceptor** | Active checkout flag when cart has ≥3 size/variant of same product (strict; the ~40%-of-fashion-returns driver) → fit suggestion + "keep one" nudge |
+| **Return + grade** | Photo upload → Condition Passport JSON (CNN **or** `bedrock_only` real-grade fallback) |
 | **Disposition engine** | Go service scores: exchange · rescue · p2p · refurb · donate · recycle |
 | **Exchange-first** | Return reason size/fit + exchange SKU in stock → offer swap before warehouse |
 | **Return Rescue** | Geo + TTL feed; nearby buyer claims; Zomato-inspired |
-| **Guardrails** | Eligibility score, chain depth cap, net-carbon gate (v1 can be rule stubs) |
+| **Next-owner matching** | pgvector cosine match (unit embedding ↔ Reverse Wishlist embedding) — real vector retrieval, not geo-only |
+| **Guardrails** | Eligibility score, chain depth cap, net-carbon gate (uses §7 carbon constants) |
 
 ### P1 — T2 differentiators
 
 | Feature | Description |
 |---|---|
-| **Reverse Wishlist** | Buyer posts demand; match when return graded |
+| **Reverse Wishlist** | Buyer posts demand; pgvector match when return graded |
+| **Demand-weighted disposition** | Open wishes feed the disposition score itself — high local demand for a SKU pulls routing toward rescue/p2p (routing input, not post-match lookup) |
+| **Wish confidence scoring** | Rank matches by buyer intent (wish-age, purchase history, category affinity) — lightweight ML, not a flat lookup |
+| **Pair Rescue** | Bipartite A↔B swap: each user's return satisfies the other's wish, geo-bounded — near-zero-carbon, no resale intermediary (promoted from T3) |
+| **Rescue decay pricing** | Discount rises as TTL drops (15%→30%→45%); countdown becomes a price clock — optimizes recovery value over time |
+| **Ops / seller dashboard** | Second persona: high-return SKUs flagged by relay-ml, **seller return-signal aggregation** (e.g. "34% return rate, reason: color mismatch → fix photos"), live rescue listings with TTL countdown, chain-depth view |
 | **P2P one-click list** | From return flow; escrow stub; LifeLedger passport shown |
 | **Warranty chain** | Electronics: remaining warranty + repair events on passport |
 | **LifeLedger verify** | QR → hash check on Polygon Amoy testnet |
@@ -133,11 +161,11 @@ Copy status into PR descriptions. **Definition of Done (DoD)** = code merged + a
 | Feature | Description |
 |---|---|
 | **Green credits** | Earn on *kept* rescue/exchange (14-day rule) — not purchase volume |
-| **Impact Wallet** | Net CO₂ vs baseline (simple formula OK for demo) |
+| **Impact Wallet** | Net CO₂ vs baseline using **hard-coded per-channel constants** (rescue = 2.4 kg saved) — see §7 Carbon model |
 
 ### T3 — stretch (Lego add-on; pitch optional)
 
-RL disposition hook · Pair Rescue · Donation routing · Full MultiFlags · ClickHouse analytics
+RL disposition hook · Donation routing · Full MultiFlags · return-reason NLP clustering · ClickHouse analytics
 
 ### Dual vertical demo
 
@@ -210,6 +238,16 @@ flowchart TB
 | Video | 5–8 keyframes | T1 on each → aggregate max damage | Bhavya |
 
 **Rule:** `relay-api` never calls Bedrock directly for grading — always `relay-ml`.
+
+**`GRADING_MODE` escape hatch (demo safety):** relay-ml supports a service-level mode so the perception pillar works even if the CNN isn't trained in 48h:
+
+| `GRADING_MODE` | Behavior | Use |
+|---|---|---|
+| `cnn` (default) | CNN T1 → Bedrock escalation on low confidence | Production path |
+| `bedrock_only` | **Skip CNN entirely** — every request graded by Nova Lite from image description → real ConditionPassport (`model_tier_used: bedrock-only`) | Demo-safe; slower/pricier per call but no trained model needed |
+| `mock` | Deterministic stub passport (no AI) | Shikher local dev before ML URL is live |
+
+This is server-side env only — **no contract change**. `bedrock_only` is a *real* grade fallback, distinct from Shikher's `mock` client.
 
 ---
 
@@ -302,6 +340,8 @@ flowchart TB
 | POST | `/grade-image` | `multipart: image`, `unit_id`, `category` | `ConditionPassport` |
 | POST | `/grade-video` | `multipart: video` OR `keyframes[]`, `unit_id` | `ConditionPassport` |
 | POST | `/fit-flags` | `{ "sku_id", "brand?", "category?" }` | `{ "flags": [...], "confidence" }` |
+| POST | `/embed` | `{ "text"? , "category"?, "grade"?, "size"?, "vertical"? }` | `{ "vector": [float × 384], "model": "..." }` |
+| POST | `/wish-score` | `{ "wish_age_days", "user_purchase_count", "category_affinity", "has_fit_profile" }` | `{ "score": 0.0–1.0, "model": "logreg_v1" }` |
 
 **Fit flags response shape:**
 
@@ -340,9 +380,10 @@ flowchart TB
 
 | Method | Path | Request | Response |
 |---|---|---|---|
-| POST | `/disposition/score` | `{ unit_id, passport, return_reason, user_id, geo }` | `{ channel, score, reasons[], guardrails_applied[] }` |
-| POST | `/match/rescue` | `{ unit_id, geo, radius_km }` | ranked user ids |
-| POST | `/match/wishlist` | `{ unit_id, passport }` | ranked wish ids |
+| POST | `/disposition/score` | `{ unit_id, passport, return_reason, user_id, geo, demand? }` | `{ channel, score, reasons[], guardrails_applied[] }` |
+| POST | `/match/rescue` | `{ unit_id, geo, radius_km }` | ranked user ids (× wish_score) |
+| POST | `/match/wishlist` | `{ unit_id, passport }` | ranked wish ids (× wish_score) |
+| POST | `/match/pair-rescue` | `{ geo, radius_km }` | `[{ unit_a, unit_b, user_a, user_b, distance_km }]` bipartite swaps |
 
 ---
 
@@ -362,10 +403,14 @@ product_units (id, product_id, serial, status, owner_id, transfer_count, geo_lat
 return_events (id, unit_id, user_id, reason_code, status, created_at)
 condition_passports (id, unit_id, return_id, passport JSONB, passport_hash, graded_at)
 
--- matching
-reverse_wishlist (id, user_id, category, size, max_price, geo_lat, geo_lng, expires_at)
-rescue_listings (id, unit_id, discount_pct, expires_at, status, claimed_by)
+-- matching (pgvector embeddings are T1, not optional)
+reverse_wishlist (id, user_id, category, size, max_price, geo_lat, geo_lng, expires_at, embedding VECTOR(384), wish_score)
+rescue_listings (id, unit_id, base_discount_pct, current_discount_pct, expires_at, ttl_seconds, status, claimed_by)
+pair_rescue_matches (id, unit_a, unit_b, user_a, user_b, distance_km, status, created_at)  -- A↔B swap
 p2p_listings (id, unit_id, seller_id, price, status, escrow_status)
+
+-- prevention
+cart_items (id, user_id, product_id, sku, size, variant, qty, created_at)  -- powers bracketing detection
 
 -- trust
 lifeledger_events (id, unit_id, event_type, tx_hash, passport_hash, created_at)
@@ -373,9 +418,12 @@ warranty_records (id, unit_id, months_remaining, repair_events JSONB)
 
 -- incentives
 green_credit_ledger (id, user_id, amount, reason, unlock_at, created_at)
+impact_events (id, user_id, unit_id, channel, co2_saved_kg, created_at)  -- Impact Wallet ledger
 ```
 
-**pgvector:** `reverse_wishlist.embedding`, `product_units.embedding` (optional T2).
+**pgvector (T1):** `product_units.embedding VECTOR(384)` + `reverse_wishlist.embedding VECTOR(384)`. Embedding = encode(`category + grade + size + vertical`). Cosine ANN index for next-owner matching. **relay-ml owns embedding generation** via `POST /embed` (Bhavya, `ml-embed`); relay-api calls it for both units (from passport attrs) and wishes (from wish text), persists the vector, and runs the cosine query. Falls back to rule/geo match if `/embed` unavailable.
+
+**Seller signals:** derived view over `return_events` grouped by `sku + reason_code` → return rate + dominant reason (powers the ops catalog-fix recommendation). Bhavya `ml-return-cluster` (T3) can enrich with free-text NLP clustering.
 
 ---
 
@@ -400,9 +448,118 @@ green_credit_ledger (id, user_id, amount, reason, unlock_at, created_at)
 
 Trigger when `return_reason IN ('too_small','too_large','fit')` AND exchange SKU `in_stock` within FC → UI shows exchange CTA before Rescue/P2P.
 
+### Bracketing interceptor (prevention — P0/T1)
+
+> **Why:** Size/variant bracketing — buying multiple sizes intending to return most — drives a large share of fashion returns. Catching it at the cart is the most concrete, data-rich prevention moment (more provable than a passive fit banner).
+
+**Detection (relay-api, `cart_items`):** at checkout, group cart by `product_id`; if a product appears with **≥3 distinct `size`/`variant`** rows → bracketing flagged (strict threshold — avoids false positives on legitimate 2-item buys).
+
+| Signal | UI response |
+|---|---|
+| 3+ sizes same product | Active banner: *"You have 3 sizes of <item> — keep the one that fits. Your fit profile suggests **L**."* + one-tap "remove extras" |
+| Bracketing + known high return rate | Stronger nudge + exchange-friendly messaging (no fear scoring) |
+| Bracketing on `critical_fit` SKU | Surface article fit flag inline |
+
+**Guardrail:** advisory, never blocks purchase. Counts toward "returns prevented" demo metric.
+
+### Carbon model (Impact Wallet + net-carbon gate)
+
+> **Anchor stat:** US product returns generated ~**15 million metric tons of CO₂** in a year (Optoro / returns-industry research, cited in ScienceDirect reverse-logistics work). Per-item constants below are **demo estimates anchored to that** — hard-coded, visible on the passport/Impact Wallet, and used by the Rescue net-carbon guardrail.
+
+**Per-channel CO₂ saved vs baseline (new purchase + warehouse return + restock), kg CO₂e:**
+
+| Channel | `co2_saved_kg` | Rationale |
+|---|---|---|
+| `exchange` | 1.8 | avoids reverse leg + new outbound; one local swap |
+| `rescue` | **2.4** | skips warehouse round-trip; hyperlocal last-mile only |
+| `p2p_resale` | 3.1 | displaces a new-item purchase + avoids warehouse |
+| `refurb` | 2.0 | life extension minus processing |
+| `donate` | 1.5 | landfill diversion + social value |
+| `recycle` | 0.6 | material recovery only |
+
+**Net formula (demo):** `net_co2_saved = channel_const − (delivery_km × 0.12)` where `0.12 kg CO₂/km` is a light-vehicle last-mile factor.
+
+**Net-carbon gate (guardrail):** only surface Rescue when `net_co2_saved > 0` (i.e. `rescue_const(2.4) − delivery_km×0.12 > 0` ⇒ ~≤20 km radius). Replaces the prior "stub constants OK" note.
+
+### Next-owner matching (pgvector — T1)
+
+Embed each graded unit and each wish (`category + grade + size + vertical`) via relay-ml `/embed`; rank wishes by cosine similarity (pgvector ANN), then apply geo + price + guardrail filters. Final rank also multiplies by **wish confidence** (below). Falls back to rule/geo match if embedding unavailable.
+
 ### Reverse Wishlist
 
-Seed 20–50 wishes in demo; expire 30 days; match on category + size + price + geo.
+Seed 20–50 wishes in demo; expire 30 days; match on **embedding cosine × wish_score** + size + price + geo.
+
+### Wish confidence scoring (T2 — Bhavya `ml-wish-score`)
+
+Not all wishes are equal. Score buyer intent `0–1` so ranking favours high-intent buyers:
+
+| Feature | Signal |
+|---|---|
+| `wish_age_days` | recent wish = higher intent (decays toward 30-day expiry) |
+| `user_purchase_count` (category) | bought similar before = higher intent |
+| `category_affinity` | browse/buy affinity for the category |
+| `has_fit_profile` | complete fit profile = serious buyer |
+
+**Model:** logistic regression (`logreg_v1`) — lightweight, explainable, trains on seed/synthetic labels. Output `wish_score` stored on `reverse_wishlist`, used as a multiplier in match ranking. Keeps matching non-trivial without heavyweight ML.
+
+### Demand-weighted disposition (T2 — `engine-demand-weight`)
+
+> The disposition engine should treat **open wishes as a routing input**, not just a post-decision notification target.
+
+When scoring a returned unit, relay-engine queries open wishes matching the unit (embedding + geo) and folds a **demand term** into the channel score:
+
+```
+demand_score = Σ over matching open wishes ( wish_score × geo_decay(distance) )
+channel_score(rescue|p2p) += w_demand × normalize(demand_score)
+```
+
+- 3 high-intent wishes for a size-M Nike hoodie within 10 km → strong pull toward `rescue`/`p2p`.
+- Zero wishes for the returned Sony headphones → demand term ≈ 0 → routing leans `refurb`/`restock`.
+- Makes disposition a real multi-objective optimization (value + carbon + SLA + **demand**), not a static rule lookup. Rules remain the floor; demand re-weights among viable channels.
+
+### Pair Rescue (T2 — `engine-pair-rescue`, promoted from T3)
+
+> The most genuinely circular flow: two users swap, no money, near-zero added logistics.
+
+Bipartite match: find pairs `(A, B)` where **A's returned unit satisfies B's open wish AND B's returned unit satisfies A's wish**, both within geo proximity.
+
+- Match condition: `embed(unitA) ~ wishB` AND `embed(unitB) ~ wishA` AND `distance(A,B) ≤ radius`.
+- Greedy/Hungarian assignment over candidate pairs; demo uses seeded data (3 h build).
+- Carbon: one local leg each, no warehouse, no resale intermediary → lowest net CO₂ of any channel.
+- Writes `pair_rescue_matches`; both sides earn keep-based credits after 14-day hold.
+
+### Rescue decay pricing (T2 — `engine-rescue-decay`)
+
+Discount **increases as TTL runs out** so recovery value is optimized over time:
+
+```
+current_discount_pct = base + (max - base) × (1 - ttl_remaining / ttl_total)
+# e.g. base=15%, max=45%  → 15% at start, ~30% at 50% TTL, 45% near expiry
+```
+
+- One formula in the Go engine; recomputed on each `/rescue/feed` read (or Celery beat).
+- The countdown becomes a **price clock** — strong demo visual.
+- Guardrail: floor at AI-suggested price; never below recovery-cost threshold.
+
+### Seller-side return-signal aggregation (T2 — `api-seller-signals`)
+
+Closes the loop from reactive (handle returns) to **proactive (fix what causes returns)** — makes Relay feel like infrastructure.
+
+- Aggregate `return_events` by `sku + reason_code`; when return rate or a single reason crosses a threshold, emit a catalog-fix recommendation.
+- Example surfaced on ops: *"SKU X — 34% return rate; primary reason: color mismatch → update product photos."*
+- Reason codes power the demo; `ml-return-cluster` (T3, Bhavya) can cluster free-text reasons for richer signals.
+
+### Ops / seller dashboard (T2)
+
+Read-only second persona over existing data — no new pipeline:
+
+| Panel | Source |
+|---|---|
+| High-return SKUs flagged | aggregate `return_events` + relay-ml fit flags per SKU |
+| Catalog-fix recommendations | seller-signal aggregation per `sku + reason_code` (e.g. "fix photos") |
+| Items in rescue (live TTL countdown + decay price) | `rescue_listings` where `status=active`, `expires_at`, `current_discount_pct` |
+| Chain-depth watch | `product_units.transfer_count` approaching cap (≥3 → forced refurb/donate) |
+| Net impact rollup | sum `impact_events.co2_saved_kg` |
 
 ### P2P
 
@@ -430,6 +587,7 @@ Build the **perception layer**: image/video grading + fit flags → structured *
 3. **`confidence` + `model_tier_used`** on every grade response — drives his guardrails/display.
 4. **`passport_hash`** — SHA-256 of canonical JSON (document algorithm in README).
 5. **Docker image** that runs on CPU for demo (GPU nice, not required).
+6. **Contract-aligned passport** (`ml-passport-align`, T0): the current Pydantic `ConditionPassport` drifts from `relay-contracts` v1 — add `schema_version: "1.0.0"`, add `"missing"` to `packaging_state`, make `vertical` an enum (`fashion|electronics`), and relax fields the contract marks optional (`category`, `disposition_hint`, `packaging_state`, `passport_hash`). Fix before `/grade-image` ships so relay-api/engine validation passes.
 
 ### What you can use from Shikher (when ready)
 
@@ -535,9 +693,32 @@ def grade_image(image_bytes, unit_id, category):
     return bedrock_nova_pro(image_bytes)  # T3
 ```
 
-**Env vars:** `AWS_REGION`, `BEDROCK_MODEL_T2`, `BEDROCK_MODEL_T3`, `OPENAI_API_KEY` (fallback).
+**Env vars:** `AWS_REGION`, `BEDROCK_MODEL_T2`, `BEDROCK_MODEL_T3`, `OPENAI_API_KEY` (fallback), `GRADING_MODE`.
 
 **Cost:** CNN first always. Log `model_tier_used` for Shikher's Impact/cost story.
+
+#### `GRADING_MODE=bedrock_only` — the "skip CNN" escape hatch (T1, demo-safe)
+
+If the CNN isn't trained in time, the grading pillar must **still produce real grades**. Implement a mode that bypasses the CNN entirely and grades every request with **Nova Lite** directly:
+
+```python
+# pipelines/bedrock_tiers.py
+def grade_image(image_bytes, unit_id, category):
+    if settings.grading_mode == "bedrock_only":
+        return bedrock_nova_lite_grade(image_bytes, unit_id, category)  # model_tier_used="bedrock-only"
+    if settings.grading_mode == "mock":
+        return stub_passport(unit_id, category)
+    # default "cnn" path:
+    if is_blurry(image_bytes): return reject("T0")
+    passport = cnn_predict(image_bytes)
+    if passport.confidence >= 0.85: return passport      # T1
+    passport = bedrock_haiku_extract(image_bytes)        # T2
+    return passport if passport.confidence >= 0.75 else bedrock_nova_pro(image_bytes)  # T3
+```
+
+- Slower + pricier per call than CNN, but **no trained model required** → safe for the demo video.
+- Returns a valid ConditionPassport per contract; only `model_tier_used` differs.
+- Keep CNN path as default so the engineering/cost narrative still holds when the model lands.
 
 **References:**
 - `aws-samples/sample-generative-visual-inspection` (Nova Pro defects)
@@ -558,6 +739,27 @@ def grade_image(image_bytes, unit_id, category):
 
 ---
 
+### B4.1 — Matching support (embeddings + wish scoring)
+
+These are yours now — they give the matching story real ML depth and keep relay-api lean.
+
+**`POST /embed` (T1, `ml-embed`):** return a 384-d vector for a unit or a wish.
+- Input: free `text` OR structured `{ category, grade, size, vertical }`.
+- Model: `sentence-transformers/all-MiniLM-L6-v2` (CPU, ~80 MB) or Bedrock Titan Embeddings.
+- relay-api calls this for both `product_units` and `reverse_wishlist`; you only return the vector.
+- Keep the model name in the response (`model`) so Shikher can store provenance.
+
+**`POST /wish-score` (T2, `ml-wish-score`):** buyer-intent score `0–1`.
+- Features: `wish_age_days`, `user_purchase_count`, `category_affinity`, `has_fit_profile`.
+- Model: logistic regression (`logreg_v1`) on seed/synthetic labels; explainable coefficients.
+- Used by relay-engine matching as a rank multiplier (and feeds demand-weighted disposition).
+
+**`ml-return-cluster` (T3 stretch):** cluster free-text return reasons (e.g. embeddings + KMeans) so seller signals go beyond fixed reason codes ("color not as shown" variants collapse to one signal).
+
+**Contract:** add `/embed` + `/wish-score` to `relay-contracts` relay-ml OpenAPI (`contracts-embed`) before relay-api wires them.
+
+---
+
 ### B5 — Endpoints acceptance criteria
 
 #### `POST /grade-image`
@@ -575,6 +777,15 @@ def grade_image(image_bytes, unit_id, category):
 #### `POST /fit-flags`
 - [ ] Returns ≥1 flag for known SKUs in seed data
 - [ ] `confidence` on each flag
+
+#### `POST /embed`
+- [ ] Returns a 384-length float vector for text or structured attrs
+- [ ] Deterministic for identical input; `model` name included
+- [ ] Latency < 1s on CPU
+
+#### `POST /wish-score`
+- [ ] Returns `score` in 0–1 with `model: "logreg_v1"`
+- [ ] Monotonic sanity: newer wish + more purchases + fit profile ⇒ higher score
 
 #### `GET /health`
 - [ ] `{ "status": "ok", "model_loaded": true, "cnn_version": "v1" }`
@@ -621,10 +832,10 @@ Full list: [`context.md`](./context.md) §6.
 |---|---|
 | 0–4 | Skeleton, datasets download, EDA notebook |
 | 4–12 | CNN train v1, `/grade-image` CPU inference |
-| 12–20 | Video keyframes, `/grade-video`, confidence calibration |
-| 20–28 | Bedrock T2/T3 escalation, `/fit-flags` rules |
-| 28–36 | Docker, deploy Railway/AWS, hand Shikher URL |
-| 36–48 | MultiFlags stretch OR hard-case tuning OR help demo recording |
+| 12–20 | Video keyframes, `/grade-video`, confidence calibration, `/embed` (unblocks Shikher's pgvector) |
+| 20–28 | Bedrock T2/T3 escalation, `/fit-flags` rules, `bedrock_only` mode |
+| 28–36 | `/wish-score` logreg, Docker, deploy Railway/AWS, hand Shikher URL |
+| 36–48 | MultiFlags OR return-reason clustering OR hard-case tuning OR demo recording |
 
 ---
 
@@ -650,13 +861,18 @@ Platform lead: repos, integration, Go engine, Python API, frontend, deploy, demo
 - [ ] Auth stub (fixed demo users `fashion_user`, `electronics_user`, `rescue_buyer`)
 - [ ] Product catalog CRUD (seeded)
 - [ ] Return flow + S3 presigned upload
-- [ ] `MLClient` interface + mock + real HTTP impl
+- [ ] `MLClient` interface + mock + real HTTP impl (`mock` independent of relay-ml `GRADING_MODE`)
 - [ ] Celery task: `grade_return_task` → call relay-ml → save passport
+- [ ] **Bracketing detection** on `/cart` / checkout (≥3 size/variant same product, strict)
+- [ ] **Embeddings**: call relay-ml `/embed` for units + wishes; persist to pgvector; cosine index (generation owned by Bhavya)
+- [ ] **Impact events**: write `co2_saved_kg` per disposition from §7 constants
 - [ ] LifeLedger stub (DB only) until T2
 
 **relay-engine:**
 - [ ] Disposition rule matrix (see below)
 - [ ] Rescue TTL scorer (geo haversine, default 3km)
+- [ ] **Net-carbon gate** using §7 constants (`rescue 2.4 − km×0.12 > 0`)
+- [ ] **pgvector cosine match** (unit ↔ wishlist) — real next-owner matching
 - [ ] Guardrails module
 
 **Disposition rule matrix v1:**
@@ -671,40 +887,50 @@ Platform lead: repos, integration, Go engine, Python API, frontend, deploy, demo
 | grade D + value low | `donate` or `recycle` |
 | transfer_count ≥ 3 | block rescue/p2p |
 
+**Demand re-weighting (T2):** rules above set viable channels; the **demand term** (open-wish `Σ wish_score × geo_decay`) then re-ranks among them — strong local demand pulls toward `rescue`/`p2p`, zero demand leans `refurb`/`restock`. See §7 Demand-weighted disposition.
+
 **relay-web pages (T1):**
 - [ ] `/` — product grid
 - [ ] `/products/[id]` — PDP + fit insight
-- [ ] `/checkout` — bracketing warning (optional)
+- [ ] `/checkout` — **active bracketing interceptor** (warn + fit suggestion, not optional)
 - [ ] `/returns/new` — wizard
 - [ ] `/rescue` — feed + countdown
 - [ ] `/account/fit-profile` — mock history
 
 ### T2 — Differentiators
 
-- [ ] Reverse wishlist UI + APIs
+- [ ] Reverse wishlist UI + APIs (pgvector match × wish_score)
+- [ ] **Demand-weighted disposition** in relay-engine (open wishes feed the score)
+- [ ] **Pair Rescue** bipartite matcher in relay-engine (promoted from T3) + `/rescue` swap UI
+- [ ] **Rescue decay pricing** formula in relay-engine + price-clock on rescue feed
+- [ ] **Seller return-signal aggregation** (api) → ops catalog-fix recommendations
+- [ ] **Ops / seller dashboard** (`/ops`): flagged SKUs + return-reason insight + live rescue TTL/decay + chain depth
 - [ ] P2P listing flow (electronics tab)
 - [ ] Warranty chain display
 - [ ] LifeLedger Solidity + Polygon Amoy + QR page
 - [ ] Green credits (14-day unlock)
+- [ ] Impact Wallet (net CO₂ from §7 constants)
 - [ ] `/demo/reset` button (admin)
 
 ### T3 — Stretch
 
-- [ ] RL hook interface in Go
-- [ ] Pair Rescue matcher
+- [ ] RL hook interface in Go (demand-weighted scorer is the bridge to this)
 - [ ] Donation routing
 - [ ] Lambda Rescue expiry
 
 ### Shikher 48h schedule (suggested)
 
+**Backend-first (UI is the final phase, not interleaved):**
+
 | Hours | Focus |
 |---|---|
-| 0–8 | All repos + contracts + compose + seed script skeleton |
-| 8–16 | API returns + mock ML + Go disposition v1 |
-| 16–24 | Web return wizard + rescue feed (mock data) |
-| 24–32 | Wire real relay-ml URL; exchange-first; guardrails |
-| 32–40 | T2 features (wishlist, p2p, LifeLedger) |
-| 40–48 | Deploy AWS + Railway backup + demo video + submission |
+| 0–6 | **Schema**: relay-api + relay-engine skeletons, Alembic migration v1 (all §6 tables + pgvector), contracts-embed |
+| 6–12 | **Endpoint design**: relay-api routes (returns, rescue, wishlist, p2p, ops) + engine routes — signatures + stubs + mock ML client |
+| 12–20 | **High-level flow**: return → grade (mock→real ml) → disposition (engine rules) → persist passport; seed script |
+| 20–28 | **Wire logic**: rescue TTL + guardrails + exchange-first + bracketing + pgvector match (call `/embed`) |
+| 28–36 | **T2 logic**: demand-weighted disposition, Pair Rescue, decay pricing, seller signals, wishlist, p2p, LifeLedger, credits/impact |
+| 36–42 | Integration test full flows via API; deploy AWS + Railway backup (seeded) |
+| 42–48 | **UI phase**: wire `web-*` to ready backend; demo video; submission |
 
 ---
 
@@ -713,7 +939,7 @@ Platform lead: repos, integration, Go engine, Python API, frontend, deploy, demo
 | From → To | Protocol | Data |
 |---|---|---|
 | relay-web → relay-api | REST JSON | UI requests |
-| relay-api → relay-ml | REST multipart/JSON | Images, passports |
+| relay-api → relay-ml | REST multipart/JSON | Images, passports, **embeddings (`/embed`)**, **wish scores (`/wish-score`)** |
 | relay-api → relay-engine | REST JSON | Passport + context |
 | relay-api → Postgres | SQL | Everything persistent |
 | relay-api → Redis | Redis protocol | Rescue TTL, Celery |
@@ -764,11 +990,13 @@ REDIS_URL=redis://...
 | Time | Scene |
 |---|---|
 | 0:00–0:25 | Problem + return chain risk + our guardrails |
-| 0:25–1:20 | Fashion: fit insight → return → grade passport → exchange OR rescue |
-| 1:20–1:50 | Reverse wishlist match notification + claim countdown |
-| 1:50–2:20 | Electronics: P2P list + warranty on LifeLedger + QR verify |
-| 2:20–2:50 | Ops dashboard: chain depth, transfer_count |
-| 2:50–3:00 | HLD slide: Go engine + Bedrock tiers + scale |
+| 0:25–0:45 | Prevention: **bracketing interceptor** at checkout (3 sizes → keep one) + fit insight |
+| 0:45–1:20 | Fashion: return → grade passport → exchange OR rescue (net CO₂ shown) |
+| 1:20–1:45 | Reverse wishlist **pgvector match** (demand-weighted) + decay-price claim countdown |
+| 1:45–2:05 | **Pair Rescue**: A↔B swap, no money, near-zero carbon — the most circular 20s |
+| 2:05–2:30 | Electronics: P2P list + warranty on LifeLedger + QR verify |
+| 2:30–2:55 | **Ops/seller dashboard**: flagged SKUs + "fix your photos" signal + live rescue TTL + chain depth |
+| 2:55–3:00 | HLD slide: Go engine + Bedrock tiers + scale |
 
 ### Page list
 
@@ -776,9 +1004,11 @@ REDIS_URL=redis://...
 |---|---|---|
 | `/` | T0 | Shikher |
 | `/products/[id]` | T1 | Shikher |
+| `/checkout` (bracketing interceptor) | T1 | Shikher |
 | `/returns/new` | T1 | Shikher |
 | `/rescue` | T1 | Shikher |
 | `/wishlist` | T2 | Shikher |
+| `/ops` (seller/ops dashboard) | T2 | Shikher |
 | `/p2p/sell/[returnId]` | T2 | Shikher |
 | `/lifeledger/[unitId]` | T2 | Shikher |
 | `/demo/reset` | T2 | Shikher |
@@ -847,12 +1077,16 @@ PORT=8001
 AWS_REGION=ap-south-1
 AWS_ACCESS_KEY_ID=
 AWS_SECRET_ACCESS_KEY=
+GRADING_MODE=cnn               # cnn | bedrock_only | mock  (bedrock_only = skip-CNN demo-safe fallback)
+BEDROCK_MODEL_T1=amazon.nova-lite-v1:0   # used by bedrock_only path
 BEDROCK_MODEL_T2=anthropic.claude-3-haiku-...
 BEDROCK_MODEL_T3=amazon.nova-pro-v1:0
 OPENAI_API_KEY=           # fallback
 CNN_MODEL_PATH=./models/grade_cnn_v1.pt
 CONFIDENCE_THRESHOLD_T2=0.85
 CONFIDENCE_THRESHOLD_T3=0.75
+EMBEDDING_MODEL=all-MiniLM-L6-v2         # 384-dim; /embed (sentence-transformer or Bedrock Titan)
+WISH_SCORE_MODEL_PATH=./models/wish_logreg_v1.pkl   # /wish-score logistic regression
 ```
 
 ### relay-api (Shikher)
@@ -865,6 +1099,9 @@ ML_SERVICE_URL=http://relay-ml:8001
 RELAY_ENGINE_URL=http://relay-engine:8002
 S3_BUCKET=relay-media
 AWS_REGION=ap-south-1
+RESCUE_DISCOUNT_BASE=0.15        # decay pricing floor
+RESCUE_DISCOUNT_MAX=0.45         # decay pricing ceiling near TTL expiry
+PAIR_RESCUE_RADIUS_KM=10
 POLYGON_RPC_URL=https://rpc-amoy.polygon.technology
 LIFELEDGER_PRIVATE_KEY=     # testnet only
 CELERY_BROKER_URL=redis://redis:6379/1
@@ -914,21 +1151,21 @@ M0 (parallel)
   Bhavya:  ml skeleton + datasets + /health
 
 M1 (parallel) — TARGET: T1 demo
-  Shikher: returns API + Go disposition + rescue + web wizard + seed + mock→real ML
-  Bhavya:  CNN v1 + /grade-image + /grade-video + /fit-flags rules
+  Shikher: returns API + Go disposition + rescue + bracketing(≥3) + pgvector match + carbon constants + web wizard + seed + mock→real ML
+  Bhavya:  CNN v1 + /grade-image + bedrock_only escape hatch + /grade-video + /fit-flags rules + /embed + passport contract align
 
 M2 (parallel) — TARGET: T2 demo
-  Shikher: wishlist + p2p + LifeLedger + warranty UI
-  Bhavya:  Bedrock tiers + confidence tuning + optional MultiFlags
+  Shikher: wishlist + demand-weighted disposition + pair rescue + rescue decay pricing + seller signals + ops/seller dashboard + Impact Wallet + p2p + LifeLedger + warranty UI
+  Bhavya:  Bedrock tiers + confidence tuning + /wish-score (logreg) + optional MultiFlags
 
 M3 — Deploy + video + submission
   Shikher: AWS + Railway + PPT + README
   Bhavya:  support hard cases + demo assets
 
 M4 (stretch) — T3
-  Both: RL hook, Pair Rescue, analytics
+  Both: RL hook, donation routing, return-reason clustering, analytics
 ```
 
 ---
 
-*Last updated: 2026-06-13 · Maintained alongside [`context.md`](./context.md)*
+*Last updated: 2026-06-14 (Session 6 — bracketing(≥3), ops persona, carbon constants, pgvector-T1, Bedrock-only grading; + demand-weighted disposition, wish-score, Pair Rescue, seller signals, rescue decay pricing; embeddings/wish-score assigned to Bhavya) · Maintained alongside [`context.md`](./context.md)*
