@@ -18,7 +18,7 @@
 | **Product name (working)** | **Relay** (see §15 for alternates) |
 | **Platform** | Web-first (desktop/laptop demo priority) |
 | **Demo categories** | Fashion + Electronics (dual vertical demo) |
-| **Last updated** | 2026-06-13 |
+| **Last updated** | 2026-06-14 (Session 7 — Track B: Second Life) |
 
 ---
 
@@ -490,6 +490,11 @@ Shikher's disposition engine consumes passport JSON; never raw images in busines
 | 2026-06-14 | **Seller-side return-signal aggregation** | Reactive → proactive ("fix your photos"); infrastructure framing | ✅ Accepted |
 | 2026-06-14 | **Rescue decay pricing** (TTL → discount) | Recovery-value optimization; price-clock demo visual; one Go formula | ✅ Accepted |
 | 2026-06-14 | **Build order: backend-first, UI last** | Schema → endpoints → flow → wire logic → UI; frontend wired only once backend is ready | ✅ Accepted |
+| 2026-06-14 | **Track B — Second Life (resell + republish)** as 2nd marketplace surface | Closes the circular loop on the buyer side; reuses passport/ledger/pricer; two lanes (buyer resell `p2p` + seller republish `certified`) → one catalogue | ✅ Accepted |
+| 2026-06-14 | New relay-ml **`POST /grade-and-price`** — resale grade + price **RANGE** | Resale needs a different grading lens + a trustworthy price; return a range and list the mean (absolute price is over-confident/harsh); Bhavya owns the algorithm inside the range | ✅ Accepted |
+| 2026-06-14 | **Unified pricing** across rescue + resale; **`price_fit`** matching flag | One pricer, two surfaces — rescue `list_price` = mean(range); surface price-matched wishes in Genie/reverse-wishlist | ✅ Accepted |
+| 2026-06-14 | **Resell gated on expired return window**; **payments STUBBED** | Honest demo without real payments; reuses rescue "claim locally" pattern (escrow none→held→released, ownership transfer, `P2P_SOLD` ledger); `return_window_days`=7 | ✅ Accepted |
+| 2026-06-14 | **All-real seeding** via `seed_assets/` + canonical `/demo/reset` | Real DB + LifeLedger data only (no client mocks); populated buyer + seller personas; remove stale reset cruft + hardcoded mock fallbacks | ✅ Accepted |
 
 ---
 
@@ -506,6 +511,7 @@ Shikher's disposition engine consumes passport JSON; never raw images in busines
 | 2026-06-14 | Bhavya relay-ml T0 done (FastAPI skeleton, /health, fit-flags rules, dataset tooling) — reviewed | Passport contract align; CNN/Bedrock grading |
 | 2026-06-14 | Session 6: plan updated — bracketing P0, ops persona, carbon constants, pgvector T1, Bedrock-only grading | Build T1 |
 | 2026-06-14 | Session 6b: + demand-weighted disposition, wish-score (Bhavya), Pair Rescue (T2), seller signals, rescue decay pricing; bracketing ≥3; embeddings → Bhavya | Build T1 |
+| 2026-06-14 | Session 7: **Track B (Second Life) specced** in plan.md §19 — `grade-and-price` contract, `resale_listings`/orders data model, all-real `seed_assets/` seeding, seller/buyer UX; ML(Bedrock)+backend+frontend+seeding flipped to done on task board | Deploy (AWS/Railway/CI) + demo video + submission |
 
 ---
 

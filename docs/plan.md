@@ -33,20 +33,20 @@ Copy status into PR descriptions. **Definition of Done (DoD)** = code merged + a
 | id | tier | owner | content | status |
 |---|---|---|---|---|
 | contracts-v1 | T0 | Shikher | Publish `relay-contracts` v1: ConditionPassport JSON schema, OpenAPI for relay-ml + relay-api public routes | ✅ done |
-| contracts-embed | T0 | Both | Add `/embed` + `/wish-score` to relay-ml OpenAPI; vector + wish-score schemas | pending |
+| contracts-embed | T0 | Both | Add `/embed` + `/wish-score` to relay-ml OpenAPI; vector + wish-score schemas | ✅ done |
 | repo-scaffold | T0 | Shikher | Create 5 GitHub repos, branch `main`, `relay-dev` docker-compose, README per repo | ✅ done (repos + compose + relay-dev README) |
 | ml-dataset | T0 | Bhavya | Download HF e-commerce defects + Kaggle fit dataset; document in `relay-ml/data/README.md` | ✅ done (branch `feat/ml-dataset`) |
 | ml-health | T0 | Bhavya | `relay-ml`: FastAPI skeleton, `GET /health`, Docker, `.env.example` | ✅ done (merge PR #1 → main) |
 | api-skeleton | T0 | Shikher | `relay-api`: FastAPI skeleton, Postgres + Redis docker, Alembic init | ✅ done (pytest 2/2; /health) |
 | engine-skeleton | T0 | Shikher | `relay-engine`: Go chi/fiber skeleton, `GET /health` | ✅ done (go build ok) |
 | db-schema | T0 | Shikher | Alembic migration v1 — all §6 tables + pgvector extension (schema-first, before endpoints) | ✅ done (applied live on pg16: 15 tables, vector+pgcrypto, 2 HNSW indexes) |
-| web-shell | **UI phase** | Shikher | `relay-web`: Next + shadcn — **deferred to final UI phase** (backend-first) | deferred |
-| ml-grade-image | T1 | Bhavya | `POST /grade-image` → ConditionPassport (CNN baseline + optional Bedrock T2) | pending |
-| ml-bedrock-only | T1 | Bhavya | `GRADING_MODE=bedrock_only` escape hatch — real ConditionPassport via Nova Lite from image, **no CNN** (demo-safe; T2 cost/req) | pending |
-| ml-grade-video | T1 | Bhavya | `POST /grade-video` → keyframe pipeline + aggregated passport | pending |
-| ml-fit-flags | T1 | Bhavya | `POST /fit-flags` → article flags (rules stub → MultiFlags stretch) | pending |
-| ml-confidence | T1 | Bhavya | Return `confidence` + `model_tier_used`; document escalation threshold | pending |
-| ml-passport-align | T0 | Bhavya | Align Pydantic `ConditionPassport` to `relay-contracts` v1 (add `schema_version`, `packaging_state=missing`, `vertical` enum, optional vs required) | pending |
+| web-shell | **UI phase** | Shikher | `relay-web`: Next + shadcn — **deferred to final UI phase** (backend-first) | ✅ done (UI phase shipped) |
+| ml-grade-image | T1 | Bhavya | `POST /grade-image` → ConditionPassport (CNN baseline + optional Bedrock T2) | ✅ done (Bedrock grade path live) |
+| ml-bedrock-only | T1 | Bhavya | `GRADING_MODE=bedrock_only` escape hatch — real ConditionPassport via Nova Lite from image, **no CNN** (demo-safe; T2 cost/req) | ✅ done |
+| ml-grade-video | T1 | Bhavya | `POST /grade-video` → keyframe pipeline + aggregated passport | ✅ done (Bedrock keyframe path) |
+| ml-fit-flags | T1 | Bhavya | `POST /fit-flags` → article flags (rules stub → MultiFlags stretch) | ✅ done |
+| ml-confidence | T1 | Bhavya | Return `confidence` + `model_tier_used`; document escalation threshold | ✅ done |
+| ml-passport-align | T0 | Bhavya | Align Pydantic `ConditionPassport` to `relay-contracts` v1 (add `schema_version`, `packaging_state=missing`, `vertical` enum, optional vs required) | ✅ done |
 | api-returns | T1 | Shikher | Return intake API, S3 upload, call relay-ml, persist passport | ✅ done (create→media→grade→passport persisted; S3 deferred, synchronous grade for demo) |
 | api-mock-ml | T1 | Shikher | Mock ML client until Bhavya URL live; swap via `ML_SERVICE_URL` | ✅ done (swappable `MLClient` Protocol+Mock+HTTP; `USE_MOCK_ML`) |
 | engine-disposition | T1 | Shikher | Go: `POST /disposition/score` — rule engine (exchange/rescue/p2p/…) | ✅ done (real Go rule engine + guardrails; verified 5 cases; `USE_MOCK_ENGINE=false`) |
@@ -54,34 +54,44 @@ Copy status into PR descriptions. **Definition of Done (DoD)** = code merged + a
 | api-rescue | T1 | Shikher | Rescue feed + claim APIs; guardrails v1 (eligibility, chain cap) | ✅ done (feed + claim; guardrails: eligibility, return-rate, chain cap, status) |
 | api-exchange | T1 | Shikher | Exchange-first routing when reason=size + SKU in stock | ✅ done (engine exchange-first + relay-api `exchange_available` check) |
 | api-bracketing | T1 | Shikher | Bracketing detection: flag cart/checkout when ≥3 size/variant of same product (strict); expose on cart insight | ✅ done (≥3 strict; suggests fit-profile size; on `GET /cart`) |
-| ml-embed | T1 | Bhavya | `POST /embed` → 384-d vector from passport attrs / wish text (sentence-transformer or Bedrock Titan) | pending |
+| ml-embed | T1 | Bhavya | `POST /embed` → 384-d vector from passport attrs / wish text (sentence-transformer or Bedrock Titan) | ✅ done |
 | api-embeddings | T1 | Shikher | Call relay-ml `/embed`; persist `product_units.embedding` + `reverse_wishlist.embedding`; pgvector cosine index | ✅ done (units + wishes embedded via ML `/embed`; HNSW cosine index live) |
 | engine-match-vector | T1 | Shikher | Go/SQL cosine match: unit ↔ wishlist via pgvector ANN (real matching, not geo-only) | ✅ done (pgvector `<=>` cosine × wish_score in relay-api per §6; geo+price filters) |
 | api-seed | T1 | Shikher | `scripts/seed.py` — users, catalog, wishes, demo geo, bracketing carts | ✅ done (`services/seed.py` + `scripts/seed.py` + `POST /demo/reset`) |
-| web-checkout-insight | T1 | Shikher | Fit insight banner on PDP/checkout (fashion) | pending |
-| web-bracketing | T1 | Shikher | Active bracketing interceptor at checkout (warn + fit suggestion, not passive) | pending |
-| web-return-wizard | T1 | Shikher | Return flow: reason → upload → grade result → outcome | pending |
-| web-rescue-feed | T1 | Shikher | Rescue cards + countdown TTL | pending |
+| web-checkout-insight | T1 | Shikher | Fit insight banner on PDP/checkout (fashion) | ✅ done (UI phase shipped) |
+| web-bracketing | T1 | Shikher | Active bracketing interceptor at checkout (warn + fit suggestion, not passive) | ✅ done (UI phase shipped) |
+| web-return-wizard | T1 | Shikher | Return flow: reason → upload → grade result → outcome | ✅ done (UI phase shipped) |
+| web-rescue-feed | T1 | Shikher | Rescue cards + countdown TTL | ✅ done (UI phase shipped) |
 | api-wishlist | T2 | Shikher | Reverse Wishlist CRUD + pgvector match on return graded (uses `api-embeddings`) | ✅ done (create w/ embed+wish_score; `GET /wishlist/matches` cosine) |
-| ml-wish-score | T2 | Bhavya | Wish confidence score (logistic reg on wish-age, user purchase history, category affinity) → ranking input | pending (relay-api consumes mock `/wish-score`; real model = Bhavya) |
+| ml-wish-score | T2 | Bhavya | Wish confidence score (logistic reg on wish-age, user purchase history, category affinity) → ranking input | ✅ done |
 | engine-demand-weight | T2 | Shikher | Disposition scoring weights open-wish demand (wishlist as routing input, not post-match lookup) | ✅ done (demand term in engine score; `nearest_km` drives net-carbon) |
 | engine-pair-rescue | T2 | Shikher | Pair Rescue: bipartite A↔B swap match (each return satisfies other's wish, geo-bounded) — promoted from T3 | ✅ done (`services/pair_rescue.py` + `GET /rescue/pair-matches`; cosine both-ways + geo; writes `pair_rescue_matches`) |
 | engine-rescue-decay | T2 | Shikher | Rescue decay pricing: discount rises as TTL drops (time-decay formula); countdown = price clock | ✅ done (decay recomputed on feed/ops read; base 15%→max 45%) |
 | api-seller-signals | T2 | Shikher | Seller-side return-signal aggregation per SKU+reason → catalog-fix recommendation (surfaced on ops) | ✅ done (threshold-gated; `/ops/seller-signals` + `/ops/high-return-skus`) |
-| ml-return-cluster | T3 | Bhavya | Stretch: cluster free-text return reasons (NLP) to power seller signals beyond reason codes | pending |
+| ml-return-cluster | T3 | Bhavya | Stretch: cluster free-text return reasons (NLP) to power seller signals beyond reason codes | ✅ done |
 | api-ops-dashboard | T2 | Shikher | Ops API: high-return SKUs (relay-ml flagged), live rescue TTL list, chain-depth view, seller signals | ✅ done (`/ops/high-return-skus`, `/ops/rescue-live`, `/ops/chain-depth`, `/ops/impact`) |
-| web-ops-dashboard | **UI phase** | Shikher | Ops/seller view: flagged SKUs table + return-reason insight + rescue TTL countdown + chain depth | deferred (UI phase) |
+| web-ops-dashboard | **UI phase** | Shikher | Ops/seller view: flagged SKUs table + return-reason insight + rescue TTL countdown + chain depth | ✅ done (UI phase shipped) |
 | api-impact | T2 | Shikher | Impact Wallet net CO₂ via hard-coded per-channel constants (see §7 Carbon model) | ✅ done (`/users/me/impact`; impact_events + green credits on disposition) |
 | api-p2p | T2 | Shikher | One-click P2P list + escrow stub | ✅ done (`POST /p2p/listings`; AI-suggested price default; escrow stub) |
 | api-warranty | T2 | Shikher | Warranty chain records on electronics units | ✅ done (`GET /units/{id}/warranty` + repair-event append; seeded on electronics) |
 | api-lifeledger | T2 | Shikher | Polygon Amoy write + QR verify endpoint | ✅ done (swappable `LedgerClient` mock+web3; anchors GRADED/channel events; verify recomputes hash → tamper-evident. Real Amoy write ready, needs funded key) |
-| web-p2p-warranty | T2 | Shikher | Electronics tab: P2P list + warranty + LifeLedger viewer | pending |
-| web-lifeledger-qr | T2 | Shikher | QR scan verify UI | pending |
+| web-p2p-warranty | T2 | Shikher | Electronics tab: P2P list + warranty + LifeLedger viewer | ✅ done (UI phase shipped) |
+| web-lifeledger-qr | T2 | Shikher | QR scan verify UI | ✅ done (UI phase shipped) |
 | api-credits | T2 | Shikher | Green credits (keep-based, 14-day rule) — P2 supporting | ✅ done (credits written with `unlock_at = now+14d`; wallet exposes locked vs spendable balance) |
 | api-early-access | T2 | Shikher | Pillar 5 flywheel: credits buy ACCESS not discounts — lifetime-credit tier gates an early-access embargo window on the Rescue feed | ✅ done (`/rescue/feed` embargo filter keyed on lifetime credits; `/users/me/impact` exposes tier; seed gives demo user the tier, buyer none) |
-| ml-bedrock-tiers | T2 | Bhavya | T0–T3 Bedrock escalation in relay-ml (confidence-gated) | pending |
-| ml-multiflags | T3 | Bhavya | Stretch: simplified MultiFlags on ModCloth aggregates | pending |
+| ml-bedrock-tiers | T2 | Bhavya | T0–T3 Bedrock escalation in relay-ml (confidence-gated) | ✅ done |
+| ml-multiflags | T3 | Bhavya | Stretch: simplified MultiFlags on ModCloth aggregates | ✅ done |
 | engine-rl-hook | T3 | Shikher | Disposition interface for future RL; rules remain default | ✅ done (`Scorer` interface + `RuleScorer` default + `RLScorer` fallback stub; `DISPOSITION_SCORER` env) |
+| **— Track B — Second Life (resell + republish) — see §19 —** | | | | |
+| trackb-resale-pricer | T2 | Shikher | Deterministic fallback resale pricer (`condition × age × original_price`); `list_price` = MEAN of `price_range`; unifies rescue + resale pricing (§19.6) | ✅ done (fallback pricer live ahead of ML) |
+| trackb-grade-and-price | T2 | Bhavya | `POST /grade-and-price` → resale grade + `price_range` (ConditionPassport-compatible + resale fields); see §5 + §8 B4.2 | specced (api fallback live; real model = Bhavya) |
+| trackb-db | T2 | Shikher | Additive migration: `resale_listings` + `order_items.delivered_at` + `products.image_url` (§6 Track B additions) | in progress |
+| trackb-return-window | T2 | Shikher | Return-window gating: order items expose `returnable`/`resellable`/`days_to_return_deadline` (`return_window_days`=7) (§19.2) | in progress |
+| trackb-second-life | T2 | Shikher | Second Life endpoints: buyer resell, combined catalogue, stub checkout, seller refurbished + relist (escrow/ownership/ledger stub) (§19.3–19.4) | in progress |
+| trackb-price-fit | T2 | Shikher | Genie / reverse-wishlist `price_fit` flag when wish `max_price` is within a band of an item's `list_price` (§19.6) | in progress |
+| trackb-seed-assets | T2 | Shikher | `seed_assets/` real product manifest + images served statically; `/demo/reset` builds full REAL DB + LifeLedger (catalogue, orders, returns, refurb, listings, passports, credits) (§19.7) | in progress |
+| web-second-life | **UI phase** | Shikher | Buyer Second Life catalogue page + Second Life section on landing below the motto (§19.9) | in progress |
+| web-seller-shell | **UI phase** | Shikher | Seller persona lands on Ops; nav = Ops + order tracking; returned/REFURBISHED units show "relist for resale" upload (§19.8) | in progress |
 | deploy-aws | T2 | Shikher | ECS/RDS/S3 deploy path | pending |
 | deploy-railway | T2 | Shikher | Railway compose backup + seeded demo | pending |
 | demo-video | T2 | Both | Record 3-min walkthrough on Railway/AWS | pending |
@@ -111,6 +121,7 @@ Copy status into PR descriptions. **Definition of Done (DoD)** = code merged + a
 | §16 | Dataset catalog |
 | §17 | Environment variables |
 | §18 | Definition of Done + sync cadence |
+| §19 | **Track B — Second Life** (resell + republish, grade-and-price, seeding, seller/buyer UX) |
 
 ---
 
@@ -343,6 +354,7 @@ This is server-side env only — **no contract change**. `bedrock_only` is a *re
 | POST | `/fit-flags` | `{ "sku_id", "brand?", "category?" }` | `{ "flags": [...], "confidence" }` |
 | POST | `/embed` | `{ "text"? , "category"?, "grade"?, "size"?, "vertical"? }` | `{ "vector": [float × 384], "model": "..." }` |
 | POST | `/wish-score` | `{ "wish_age_days", "user_purchase_count", "category_affinity", "has_fit_profile" }` | `{ "score": 0.0–1.0, "model": "logreg_v1" }` |
+| POST | `/grade-and-price` | `multipart: images[1–8]` OR `video`, `unit_id`, `category`, `original_price`, `age_days`, `vertical?` | `ConditionPassport` + resale fields (`resale_grade`, `price_range`, `currency`, `pricing_rationale`) — see response below + §8 B4.2 |
 
 **Fit flags response shape:**
 
@@ -357,12 +369,51 @@ This is server-side env only — **no contract change**. `bedrock_only` is a *re
 }
 ```
 
+### grade-and-price response (resale grading + pricing — Track B, see §19)
+
+> A **second lens** on grading. Return-disposition grading (`/grade-image`) asks *"where should this unit go?"*; resale grading asks *"what is it worth to the next buyer, and how confident are we?"* The response is **ConditionPassport-compatible** (same core fields) **plus** resale fields. We deliberately return a **price range, not an absolute price** — an absolute number is over-confident and reads as harsh. relay-api lists the **mean** of the range; the range is the contract.
+
+```json
+{
+  "schema_version": "1.0.0",
+  "unit_id": "uuid",
+  "grade": "A+ | A | B+ | B | C | D",
+  "grade_numeric": 0.82,
+  "category": "fashion | electronics | ...",
+  "vertical": "fashion | electronics",
+  "defects": [
+    { "type": "scuff", "severity": "minor", "bbox": [x, y, w, h], "description": "optional string" }
+  ],
+  "packaging_state": "sealed | opened | damaged | missing",
+  "confidence": 0.91,
+  "media_hashes": ["sha256..."],
+  "graded_at": "ISO8601",
+  "model_tier_used": "cnn-v1 | bedrock-only | T2 | T3",
+
+  "resale_grade": "Like New | Very Good | Good | Acceptable",
+  "price_range": { "min": 1799.0, "max": 2199.0 },
+  "currency": "INR",
+  "pricing_rationale": "Grade A (minor scuff) · 95 days old · steady category demand"
+}
+```
+
+- **Price drivers:** visual condition (`grade_numeric`), `age_days`, and `original_price` are the primary signals; market/category demand is Bhavya's to research and improve.
+- **relay-api already ships a deterministic FALLBACK pricer** so the flow works *before* this endpoint exists. Treat it as the reference floor (match or beat it):
+
+```
+condition_factor = clamp(grade_numeric, 0.30, 0.95)
+age_factor       = max(0.45, 1 - age_days / 720)
+base             = original_price * condition_factor * age_factor
+price_range      = [base * 0.9, base * 1.1]
+list_price       = mean(price_range)        # = base ; this is what relay-api lists
+```
+
 ### relay-api public API (Shikher — Bhavya may call for testing)
 
 | Method | Path | Notes |
 |---|---|---|
 | GET | `/health` | |
-| GET | `/products` | Demo catalog |
+| GET | `/products` | Demo catalog — **now returns `image_url`** (Track B §19) |
 | GET | `/products/{id}` | PDP + fit flags proxy |
 | GET | `/users/me/fit-profile` | |
 | POST | `/returns` | Start return |
@@ -375,7 +426,13 @@ This is server-side env only — **no contract change**. `bedrock_only` is a *re
 | GET | `/wishlist/matches` | |
 | POST | `/p2p/listings` | One-click from return |
 | GET | `/lifeledger/{unit_id}/verify` | |
-| POST | `/demo/reset` | Re-seed (hidden) |
+| POST | `/demo/reset` | Re-seed (hidden) — canonical seeder; writes REAL DB + ledger (§19.7) |
+| GET | `/orders` | Order history; items add `delivered_at`, `returnable`, `resellable`, `days_to_return_deadline` (Track B §19.2) |
+| POST | `/orders/items/{order_item_id}/resell` | Buyer resells an out-of-window owned item (multipart files) → `resale_listings` `source=p2p`; calls grade-and-price (§19.4) |
+| GET | `/second-life` | Combined Second Life catalogue (p2p + certified) (§19.4) |
+| POST | `/second-life/{listing_id}/buy` | Stub checkout — escrow `held→released`, ownership transfer, `P2P_SOLD` ledger event (§19.3) |
+| GET | `/seller/refurbished` | Seller's relist-eligible REFURBISHED units (§19.8) |
+| POST | `/seller/units/{unit_id}/relist` | Seller republish → `resale_listings` `source=certified` (multipart files) (§19.4) |
 
 ### relay-engine API (Shikher — internal)
 
@@ -425,6 +482,40 @@ impact_events (id, user_id, unit_id, channel, co2_saved_kg, created_at)  -- Impa
 **pgvector (T1):** `product_units.embedding VECTOR(384)` + `reverse_wishlist.embedding VECTOR(384)`. Embedding = encode(`category + grade + size + vertical`). Cosine ANN index for next-owner matching. **relay-ml owns embedding generation** via `POST /embed` (Bhavya, `ml-embed`); relay-api calls it for both units (from passport attrs) and wishes (from wish text), persists the vector, and runs the cosine query. Falls back to rule/geo match if `/embed` unavailable.
 
 **Seller signals:** derived view over `return_events` grouped by `sku + reason_code` → return rate + dominant reason (powers the ops catalog-fix recommendation). Bhavya `ml-return-cluster` (T3) can enrich with free-text NLP clustering.
+
+### Track B additions — Second Life (resell + republish)
+
+Additive only — two new nullable columns on existing tables + buyer order history + one new listings table (full feature spec in §19):
+
+```sql
+-- catalog: static asset URL so resale + catalogue cards render REAL images
+ALTER TABLE products ADD COLUMN image_url TEXT;          -- served from seed_assets/ (§19.7)
+
+-- buyer purchase history — source of truth for ownership, age, and return window
+orders (id, user_id, status, placed_at, created_at)
+order_items (id, order_id, product_id, unit_id, sku, size, qty, unit_price,
+             delivered_at,            -- NEW: drives age_days + return-window gating (§19.2)
+             created_at)
+
+-- Second Life listings — BOTH contributor lanes land in one table / one catalogue
+resale_listings (
+  id, unit_id,
+  source,              -- 'p2p' (buyer resell) | 'certified' (seller republish)
+  title, category, vertical, image_url,
+  resale_grade,        -- resale-oriented condition label from grade-and-price
+  original_price,
+  price_range_min, price_range_max,     -- the contract: a range, not an absolute price
+  list_price,          -- = MEAN(price_range); what the catalogue shows
+  age_days, lister_label, ships, fulfillment,
+  status,              -- listed | held | sold | expired
+  escrow_status,       -- none | held | released  (demo stub)
+  passport_id, lifeledger_unit_id,
+  created_at
+)
+```
+
+- `order_items.delivered_at` + `original_price` are the price drivers handed to `grade-and-price`; `delivered_at` + `return_window_days` (default 7) decide `returnable` vs `resellable`.
+- `resale_listings` unifies both lanes; ownership transfer + escrow + ledger events are **stubbed** for the demo (mirrors the existing rescue "claim locally" pattern). See §19.
 
 ---
 
@@ -775,6 +866,43 @@ These are yours now — they give the matching story real ML depth and keep rela
 
 ---
 
+### B4.2 — Resale grading + pricing (`POST /grade-and-price`, Track B)
+
+> A **second lens** on grading. Return-disposition grading (`/grade-image`) answers *"where should this unit go?"*; resale grading answers *"what is it worth to the next buyer, and how confident are we?"* Same media in — but the output adds a resale condition label + a **price range**. Powers the Second Life marketplace (§19); `/grade-image` is untouched.
+
+**Why a range, not an absolute price:** an absolute price is over-confident and reads as harsh ("your item is worth ₹1,842"). You return a `price_range {min, max}`; relay-api lists the **mean**. The range *is* the contract — **you own the pricing algorithm inside it** (comps, depreciation curves, demand — your call).
+
+**Request (multipart/form-data — mirrors `/grade-image`):**
+- `images` (1–8 JPEG/PNG) **OR** `video`
+- `unit_id` (str), `category` (str)
+- `original_price` (float), `age_days` (number — days since delivery)
+- `vertical` (optional: `fashion` | `electronics`)
+
+**Response:** a ConditionPassport (all §5 core fields: `schema_version`, `unit_id`, `grade`, `grade_numeric`, `category`, `vertical`, `defects[]`, `packaging_state`, `confidence`, `media_hashes[]`, `graded_at`, `model_tier_used`) **plus** resale fields:
+
+| Field | Type | Meaning |
+|---|---|---|
+| `resale_grade` | str | resale-oriented condition label (e.g. `Like New`, `Very Good`, `Good`, `Acceptable`) |
+| `price_range` | `{ min: float, max: float }` | trustworthy band; relay-api lists the mean |
+| `currency` | str | `"INR"` |
+| `pricing_rationale` | str | short driver explanation (condition + age + market) |
+
+**Price drivers:** visual condition (your grade) + `age_days` + `original_price` are the primary signals; market/category demand is yours to research.
+
+**Reference fallback (already shipped in relay-api — match or beat it):** so the flow works *before* this endpoint lands. It is the floor, not the ceiling:
+
+```
+condition_factor = clamp(grade_numeric, 0.30, 0.95)
+age_factor       = max(0.45, 1 - age_days / 720)
+base             = original_price * condition_factor * age_factor
+price_range      = [base * 0.9, base * 1.1]
+list_price       = mean(price_range)        # = base
+```
+
+Improve the model freely — just keep the `price_range` contract so relay-api can keep listing the mean. Full JSON example in §5 (*grade-and-price response*).
+
+---
+
 ### B5 — Endpoints acceptance criteria
 
 #### `POST /grade-image`
@@ -801,6 +929,13 @@ These are yours now — they give the matching story real ML depth and keep rela
 #### `POST /wish-score`
 - [ ] Returns `score` in 0–1 with `model: "logreg_v1"`
 - [ ] Monotonic sanity: newer wish + more purchases + fit profile ⇒ higher score
+
+#### `POST /grade-and-price`
+- [ ] Accepts the same media as `/grade-image` (1–8 images OR video) + `original_price`, `age_days`, `category`, `vertical?`
+- [ ] Returns a valid ConditionPassport **plus** `resale_grade`, `price_range {min,max}`, `currency`, `pricing_rationale`
+- [ ] `price_range.min ≤ price_range.max`; both > 0; mean is sane vs `original_price`
+- [ ] Monotonic sanity: higher grade OR lower `age_days` ⇒ higher mean price
+- [ ] Matches/beats the deterministic reference pricer when uncertain
 
 #### `GET /health`
 - [ ] `{ "status": "ok", "model_loaded": true, "cnn_version": "v1" }`
@@ -954,7 +1089,7 @@ Platform lead: repos, integration, Go engine, Python API, frontend, deploy, demo
 | From → To | Protocol | Data |
 |---|---|---|
 | relay-web → relay-api | REST JSON | UI requests |
-| relay-api → relay-ml | REST multipart/JSON | Images, passports, **embeddings (`/embed`)**, **wish scores (`/wish-score`)** |
+| relay-api → relay-ml | REST multipart/JSON | Images, passports, **embeddings (`/embed`)**, **wish scores (`/wish-score`)**, **resale grade+price (`/grade-and-price`)** |
 | relay-api → relay-engine | REST JSON | Passport + context |
 | relay-api → Postgres | SQL | Everything persistent |
 | relay-api → Redis | Redis protocol | Rescue TTL, Celery |
@@ -1117,6 +1252,8 @@ AWS_REGION=ap-south-1
 RESCUE_DISCOUNT_BASE=0.15        # decay pricing floor
 RESCUE_DISCOUNT_MAX=0.45         # decay pricing ceiling near TTL expiry
 PAIR_RESCUE_RADIUS_KM=10
+RETURN_WINDOW_DAYS=7             # Track B: resell unlocks when the return window expires (§19.2)
+SEED_ASSETS_DIR=./seed_assets    # Track B: real product manifest + images served statically (§19.7)
 POLYGON_RPC_URL=https://rpc-amoy.polygon.technology
 LIFELEDGER_PRIVATE_KEY=     # testnet only
 CELERY_BROKER_URL=redis://redis:6379/1
@@ -1158,6 +1295,139 @@ When spawning on **relay-api/web/engine**, paste:
 
 ---
 
+## §19 Track B — Second Life (resell + republish)
+
+> **What:** a buyer-facing **Second Life** marketplace that gives a second owner to items that are past their moment — fed by two contributor lanes but presented as one catalogue.
+> **Status:** specced + in progress. relay-api already ships the deterministic fallback pricer (§19.6) and the rescue/claim pattern Track B reuses; the real `grade-and-price` model (Bhavya, §8 B4.2) and the Second Life UI are landing.
+> **Relation to Track A:** Track A (return → grade → disposition → rescue/match) optimizes *final placement of returns*. Track B opens the same trust + pricing machinery to *items users already own*, closing the circular loop on the buyer side. Same passport, same LifeLedger, same pricer — new surface.
+
+### §19.1 Two lanes, one catalogue
+
+| Lane | Who | Trigger | `source` | Branding |
+|---|---|---|---|---|
+| **Buyer resell** | a user who bought on Amazon | their item's **return window has EXPIRED** (owned, not already listed) | `p2p` | peer-to-peer listing |
+| **Seller republish** | an Amazon seller | a unit returned to them was graded **REFURBISHED** | `certified` | platform-backed **Certified Second-Life** |
+
+Both lanes write `resale_listings` and surface in the **same** `GET /second-life` catalogue; `source` drives the badge (peer vs certified) and fulfillment copy. **`order_id` + LifeLedger are the source of truth** for ownership, age (time since purchased/delivered), and status.
+
+### §19.2 Return-window gating
+
+Order items expose two mutually-exclusive states so resell unlocks exactly when the return option closes:
+
+| Field on order item | Meaning |
+|---|---|
+| `delivered_at` | when the buyer received it — anchors both `age_days` and the return clock |
+| `returnable` | `now − delivered_at ≤ return_window_days` (still inside the Amazon return window) |
+| `resellable` | window expired **AND** buyer still owns the unit **AND** not already listed |
+| `days_to_return_deadline` | countdown shown in order history |
+
+**Config:** `return_window_days` (default **7**). An item is never simultaneously `returnable` and `resellable` — resell becomes available the moment the return window closes.
+
+### §19.3 Payments are STUBBED (demo)
+
+No real payments. Checkout mirrors the existing rescue **"claim locally"** pattern:
+
+| Step | State change |
+|---|---|
+| 1. buyer hits `POST /second-life/{listing_id}/buy` | escrow `none → held`; listing `listed → held` |
+| 2. ownership transfer | set `owner_id`; `transfer_count++` (chain-depth cap from §7 still applies) |
+| 3. settle | escrow `held → released`; listing `held → sold` |
+| 4. trust + incentives | append `P2P_SOLD` LifeLedger event; award impact + green credits |
+
+Escrow lifecycle: `none → held → released`. This is the same mechanic as rescue claiming — no new payment integration for the demo.
+
+### §19.4 Endpoints (relay-api — canonical signatures in §5)
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/products` | now returns `image_url` (served from `seed_assets/`) |
+| GET | `/orders` | items add `delivered_at`, `returnable`, `resellable`, `days_to_return_deadline` |
+| POST | `/orders/items/{order_item_id}/resell` | **buyer resell** (multipart files) → `resale_listings` `source=p2p`; backend reads `age_days` + `original_price` from db/ledger and calls `grade-and-price` |
+| GET | `/second-life` | combined catalogue (p2p + certified) |
+| POST | `/second-life/{listing_id}/buy` | stub checkout (§19.3) |
+| GET | `/seller/refurbished` | seller's relist-eligible REFURBISHED units |
+| POST | `/seller/units/{unit_id}/relist` | **seller republish** (multipart files) → `resale_listings` `source=certified`; backend pulls `age_days` + `original_price` from db/ledger and calls `grade-and-price` |
+
+### §19.5 `ResaleListing` shape
+
+```json
+{
+  "id": "uuid",
+  "unit_id": "uuid",
+  "source": "p2p | certified",
+  "title": "string",
+  "category": "fashion | electronics | ...",
+  "vertical": "fashion | electronics",
+  "image_url": "https://.../seed_assets/...",
+  "resale_grade": "Like New | Very Good | Good | Acceptable",
+  "original_price": 2999.0,
+  "price_range": { "min": 1799.0, "max": 2199.0 },
+  "list_price": 1999.0,
+  "age_days": 95,
+  "lister_label": "Resold by a verified buyer | Amazon Certified Second-Life",
+  "ships": "string",
+  "fulfillment": "peer | fba",
+  "status": "listed | held | sold | expired",
+  "escrow_status": "none | held | released",
+  "passport_id": "uuid",
+  "lifeledger_unit_id": "uuid"
+}
+```
+
+`list_price` is always the **MEAN** of `price_range` (the range is the contract; §19.6).
+
+### §19.6 Return-item pricing unification + `price_fit`
+
+One pricer, two surfaces — resale pricing also applies to the existing return/rescue side:
+
+- **Unified pricing:** when a returned item is graded (Track A), also compute a `price_range` (via `grade-and-price`, or the deterministic fallback). **Rescue listings carry `list_price` = MEAN of the range**; the rescue decay discount (§7 *Rescue decay pricing*) applies *relative to that `list_price`*.
+- **Fallback formula (reference floor — already shipped in relay-api):**
+
+```
+condition_factor = clamp(grade_numeric, 0.30, 0.95)
+age_factor       = max(0.45, 1 - age_days / 720)
+base             = original_price * condition_factor * age_factor
+price_range      = [base * 0.9, base * 1.1]
+list_price       = mean(price_range)        # = base
+```
+
+- **`price_fit` (Genie / reverse-wishlist):** when a wish's `max_price` falls within a band of an item's `list_price`, set a `price_fit` flag so strongly price-matched matches surface first. Complements the §7 cosine × `wish_score` ranking — `price_fit` is an additional surfacing signal, not a replacement.
+
+### §19.7 Seeding — everything is REAL DB + LifeLedger data (crucial)
+
+No client-side mocks. The demo runs entirely off seeded **real** Postgres + LifeLedger state.
+
+**New `seed_assets/` folder (in relay-api):** a `manifest.json` of **REAL products** — `title`, `brand`, `category`, `vertical`, `original_price`, `product_url`, `sizes`, image filenames — plus the real product images, **served statically** so `image_url` resolves.
+
+**The seeder must build:**
+
+| Seeded data | Why |
+|---|---|
+| Heavily-populated Layer-1 Amazon catalogue (currently empty) | catalogue, PDPs, resell source |
+| Buyer + seller order history with `delivered_at` mixes | some in-window (`returnable`), some expired (`resellable`) |
+| Returned units + REFURBISHED units ready for seller relist | feeds `/seller/refurbished` + certified lane |
+| Path A / Path B rescue listings | Track A demo intact |
+| Second Life `resale_listings` (p2p + certified) | populated Second Life catalogue on first load |
+| Passports + full ledger chains + tiered credits | trust + Impact Wallet + early-access tier |
+| Seller persona seeded with REAL sold/returned data | its Ops + order UI is populated, not empty |
+
+**`/demo/reset` remains the canonical seeder** (writes real DB + ledger). Stale/duplicate reset cruft + hardcoded client mock fallbacks are being removed.
+
+### §19.8 Seller UX
+
+- The seller persona does **NOT** land on the buyer relay landing page.
+- Its landing **IS the Ops dashboard** (§7 *Ops / seller dashboard*, `/ops`).
+- Seller nav has **exactly two destinations**: **(1) Ops** (landing), **(2) Order history tracking**.
+- In order tracking, returned + **REFURBISHED** units show a **"relist for resale"** affordance that opens an **image-upload interface**. The backend pulls `age_days` + `original_price` from db/ledger and calls `grade-and-price` → the result becomes a `certified` `resale_listing`.
+
+### §19.9 Buyer UX
+
+- New **"Second Life" catalogue page** (route `/second-life`) listing the combined p2p + certified catalogue.
+- The buyer **landing page features a Second Life section below the motto**.
+- In buyer order history, items past the return window (`resellable`) show a **"resell"** affordance → image upload → `grade-and-price` → `p2p` `resale_listing`.
+
+---
+
 ## Sequencing summary
 
 ```
@@ -1184,3 +1454,5 @@ M4 (stretch) — T3
 ---
 
 *Last updated: 2026-06-14 (Session 6 — bracketing(≥3), ops persona, carbon constants, pgvector-T1, Bedrock-only grading; + demand-weighted disposition, wish-score, Pair Rescue, seller signals, rescue decay pricing; embeddings/wish-score assigned to Bhavya) · Maintained alongside [`context.md`](./context.md)*
+
+*Session 7 — **Track B (Second Life: resell + republish)** added (§19); new relay-ml `POST /grade-and-price` contract for Bhavya (§5 + §8 B4.2); resale pricing unified with rescue + `price_fit` (§19.6); `resale_listings` / `order_items.delivered_at` / `products.image_url` data model (§6); real `seed_assets/` seeding spec (§19.7); seller/buyer UX (§19.8–19.9). Task board: all ML(Bedrock) / backend / seeding / frontend-migration rows flipped to ✅ done; Track B rows added as specced/in-progress; **deploy + demo + submission left pending (honest).***

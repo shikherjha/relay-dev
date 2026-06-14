@@ -68,6 +68,9 @@ services:
         required: false
     environment:
       PORT: 8001
+      # No CNN checkpoint shipped in-repo (git-ignored); mock keeps /grade-image
+      # working while /embed, /wish-score, /fit-flags run Bhavya's real models.
+      GRADING_MODE: ${GRADING_MODE:-mock}
     restart: unless-stopped
 
   relay-engine:
@@ -102,9 +105,9 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/1
       ML_SERVICE_URL: http://relay-ml:8001
       ENGINE_SERVICE_URL: http://relay-engine:8002
-      # relay-engine logic is live; relay-ml stays mocked until Bhavya's URL is up.
+      # relay-engine + relay-ml logic both live now (Bhavya's ML merged).
       USE_MOCK_ENGINE: "false"
-      USE_MOCK_ML: "true"
+      USE_MOCK_ML: ${USE_MOCK_ML:-false}
     depends_on:
       postgres:
         condition: service_healthy
