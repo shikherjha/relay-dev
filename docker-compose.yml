@@ -101,6 +101,9 @@ services:
       REDIS_URL: redis://redis:6379/0
       ML_SERVICE_URL: http://relay-ml:8001
       ENGINE_SERVICE_URL: http://relay-engine:8002
+      # relay-engine logic is live; relay-ml stays mocked until Bhavya's URL is up.
+      USE_MOCK_ENGINE: "false"
+      USE_MOCK_ML: "true"
     depends_on:
       postgres:
         condition: service_healthy

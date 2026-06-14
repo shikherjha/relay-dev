@@ -47,37 +47,37 @@ Copy status into PR descriptions. **Definition of Done (DoD)** = code merged + a
 | ml-fit-flags | T1 | Bhavya | `POST /fit-flags` → article flags (rules stub → MultiFlags stretch) | pending |
 | ml-confidence | T1 | Bhavya | Return `confidence` + `model_tier_used`; document escalation threshold | pending |
 | ml-passport-align | T0 | Bhavya | Align Pydantic `ConditionPassport` to `relay-contracts` v1 (add `schema_version`, `packaging_state=missing`, `vertical` enum, optional vs required) | pending |
-| api-returns | T1 | Shikher | Return intake API, S3 upload, call relay-ml, persist passport | pending |
-| api-mock-ml | T1 | Shikher | Mock ML client until Bhavya URL live; swap via `ML_SERVICE_URL` | pending |
-| engine-disposition | T1 | Shikher | Go: `POST /disposition/score` — rule engine (exchange/rescue/p2p/…) | pending |
-| engine-rescue-ttl | T1 | Shikher | Go: Rescue listing TTL + geo radius scoring | pending |
-| api-rescue | T1 | Shikher | Rescue feed + claim APIs; guardrails v1 (eligibility, chain cap) | pending |
-| api-exchange | T1 | Shikher | Exchange-first routing when reason=size + SKU in stock | pending |
-| api-bracketing | T1 | Shikher | Bracketing detection: flag cart/checkout when ≥3 size/variant of same product (strict); expose on cart insight | pending |
+| api-returns | T1 | Shikher | Return intake API, S3 upload, call relay-ml, persist passport | ✅ done (create→media→grade→passport persisted; S3 deferred, synchronous grade for demo) |
+| api-mock-ml | T1 | Shikher | Mock ML client until Bhavya URL live; swap via `ML_SERVICE_URL` | ✅ done (swappable `MLClient` Protocol+Mock+HTTP; `USE_MOCK_ML`) |
+| engine-disposition | T1 | Shikher | Go: `POST /disposition/score` — rule engine (exchange/rescue/p2p/…) | ✅ done (real Go rule engine + guardrails; verified 5 cases; `USE_MOCK_ENGINE=false`) |
+| engine-rescue-ttl | T1 | Shikher | Go: Rescue listing TTL + geo radius scoring | ✅ done (geo radius + TTL on `/rescue/feed`, relay-api per §6 reconciliation) |
+| api-rescue | T1 | Shikher | Rescue feed + claim APIs; guardrails v1 (eligibility, chain cap) | ✅ done (feed + claim; guardrails: eligibility, return-rate, chain cap, status) |
+| api-exchange | T1 | Shikher | Exchange-first routing when reason=size + SKU in stock | ✅ done (engine exchange-first + relay-api `exchange_available` check) |
+| api-bracketing | T1 | Shikher | Bracketing detection: flag cart/checkout when ≥3 size/variant of same product (strict); expose on cart insight | ✅ done (≥3 strict; suggests fit-profile size; on `GET /cart`) |
 | ml-embed | T1 | Bhavya | `POST /embed` → 384-d vector from passport attrs / wish text (sentence-transformer or Bedrock Titan) | pending |
-| api-embeddings | T1 | Shikher | Call relay-ml `/embed`; persist `product_units.embedding` + `reverse_wishlist.embedding`; pgvector cosine index | pending |
-| engine-match-vector | T1 | Shikher | Go/SQL cosine match: unit ↔ wishlist via pgvector ANN (real matching, not geo-only) | pending |
-| api-seed | T1 | Shikher | `scripts/seed.py` — users, catalog, wishes, demo geo, bracketing carts | pending |
+| api-embeddings | T1 | Shikher | Call relay-ml `/embed`; persist `product_units.embedding` + `reverse_wishlist.embedding`; pgvector cosine index | ✅ done (units + wishes embedded via ML `/embed`; HNSW cosine index live) |
+| engine-match-vector | T1 | Shikher | Go/SQL cosine match: unit ↔ wishlist via pgvector ANN (real matching, not geo-only) | ✅ done (pgvector `<=>` cosine × wish_score in relay-api per §6; geo+price filters) |
+| api-seed | T1 | Shikher | `scripts/seed.py` — users, catalog, wishes, demo geo, bracketing carts | ✅ done (`services/seed.py` + `scripts/seed.py` + `POST /demo/reset`) |
 | web-checkout-insight | T1 | Shikher | Fit insight banner on PDP/checkout (fashion) | pending |
 | web-bracketing | T1 | Shikher | Active bracketing interceptor at checkout (warn + fit suggestion, not passive) | pending |
 | web-return-wizard | T1 | Shikher | Return flow: reason → upload → grade result → outcome | pending |
 | web-rescue-feed | T1 | Shikher | Rescue cards + countdown TTL | pending |
-| api-wishlist | T2 | Shikher | Reverse Wishlist CRUD + pgvector match on return graded (uses `api-embeddings`) | pending |
-| ml-wish-score | T2 | Bhavya | Wish confidence score (logistic reg on wish-age, user purchase history, category affinity) → ranking input | pending |
-| engine-demand-weight | T2 | Shikher | Disposition scoring weights open-wish demand (wishlist as routing input, not post-match lookup) | pending |
+| api-wishlist | T2 | Shikher | Reverse Wishlist CRUD + pgvector match on return graded (uses `api-embeddings`) | ✅ done (create w/ embed+wish_score; `GET /wishlist/matches` cosine) |
+| ml-wish-score | T2 | Bhavya | Wish confidence score (logistic reg on wish-age, user purchase history, category affinity) → ranking input | pending (relay-api consumes mock `/wish-score`; real model = Bhavya) |
+| engine-demand-weight | T2 | Shikher | Disposition scoring weights open-wish demand (wishlist as routing input, not post-match lookup) | ✅ done (demand term in engine score; `nearest_km` drives net-carbon) |
 | engine-pair-rescue | T2 | Shikher | Pair Rescue: bipartite A↔B swap match (each return satisfies other's wish, geo-bounded) — promoted from T3 | pending |
-| engine-rescue-decay | T2 | Shikher | Rescue decay pricing: discount rises as TTL drops (time-decay formula); countdown = price clock | pending |
-| api-seller-signals | T2 | Shikher | Seller-side return-signal aggregation per SKU+reason → catalog-fix recommendation (surfaced on ops) | pending |
+| engine-rescue-decay | T2 | Shikher | Rescue decay pricing: discount rises as TTL drops (time-decay formula); countdown = price clock | ✅ done (decay recomputed on feed/ops read; base 15%→max 45%) |
+| api-seller-signals | T2 | Shikher | Seller-side return-signal aggregation per SKU+reason → catalog-fix recommendation (surfaced on ops) | partial (SKU+dominant-reason→recommendation on `/ops/high-return-skus`; threshold tuning pending) |
 | ml-return-cluster | T3 | Bhavya | Stretch: cluster free-text return reasons (NLP) to power seller signals beyond reason codes | pending |
-| api-ops-dashboard | T2 | Shikher | Ops API: high-return SKUs (relay-ml flagged), live rescue TTL list, chain-depth view, seller signals | pending |
-| web-ops-dashboard | T2 | Shikher | Ops/seller view: flagged SKUs table + return-reason insight + rescue TTL countdown + chain depth | pending |
-| api-impact | T2 | Shikher | Impact Wallet net CO₂ via hard-coded per-channel constants (see §7 Carbon model) | pending |
-| api-p2p | T2 | Shikher | One-click P2P list + escrow stub | pending |
+| api-ops-dashboard | T2 | Shikher | Ops API: high-return SKUs (relay-ml flagged), live rescue TTL list, chain-depth view, seller signals | ✅ done (`/ops/high-return-skus`, `/ops/rescue-live`, `/ops/chain-depth`, `/ops/impact`) |
+| web-ops-dashboard | **UI phase** | Shikher | Ops/seller view: flagged SKUs table + return-reason insight + rescue TTL countdown + chain depth | deferred (UI phase) |
+| api-impact | T2 | Shikher | Impact Wallet net CO₂ via hard-coded per-channel constants (see §7 Carbon model) | ✅ done (`/users/me/impact`; impact_events + green credits on disposition) |
+| api-p2p | T2 | Shikher | One-click P2P list + escrow stub | ✅ done (`POST /p2p/listings`; AI-suggested price default; escrow stub) |
 | api-warranty | T2 | Shikher | Warranty chain records on electronics units | pending |
-| api-lifeledger | T2 | Shikher | Polygon Amoy write + QR verify endpoint | pending |
+| api-lifeledger | T2 | Shikher | Polygon Amoy write + QR verify endpoint | partial (`/lifeledger/{unit}/verify` + event log live; on-chain Amoy write pending) |
 | web-p2p-warranty | T2 | Shikher | Electronics tab: P2P list + warranty + LifeLedger viewer | pending |
 | web-lifeledger-qr | T2 | Shikher | QR scan verify UI | pending |
-| api-credits | T2 | Shikher | Green credits (keep-based, 14-day rule) — P2 supporting | pending |
+| api-credits | T2 | Shikher | Green credits (keep-based, 14-day rule) — P2 supporting | partial (credits written to `green_credit_ledger` on disposition; 14-day unlock + keep-based gating pending) |
 | ml-bedrock-tiers | T2 | Bhavya | T0–T3 Bedrock escalation in relay-ml (confidence-gated) | pending |
 | ml-multiflags | T3 | Bhavya | Stretch: simplified MultiFlags on ModCloth aggregates | pending |
 | engine-rl-hook | T3 | Shikher | Disposition interface for future RL; rules remain default | pending |
