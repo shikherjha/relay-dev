@@ -65,22 +65,23 @@ Copy status into PR descriptions. **Definition of Done (DoD)** = code merged + a
 | api-wishlist | T2 | Shikher | Reverse Wishlist CRUD + pgvector match on return graded (uses `api-embeddings`) | ✅ done (create w/ embed+wish_score; `GET /wishlist/matches` cosine) |
 | ml-wish-score | T2 | Bhavya | Wish confidence score (logistic reg on wish-age, user purchase history, category affinity) → ranking input | pending (relay-api consumes mock `/wish-score`; real model = Bhavya) |
 | engine-demand-weight | T2 | Shikher | Disposition scoring weights open-wish demand (wishlist as routing input, not post-match lookup) | ✅ done (demand term in engine score; `nearest_km` drives net-carbon) |
-| engine-pair-rescue | T2 | Shikher | Pair Rescue: bipartite A↔B swap match (each return satisfies other's wish, geo-bounded) — promoted from T3 | pending |
+| engine-pair-rescue | T2 | Shikher | Pair Rescue: bipartite A↔B swap match (each return satisfies other's wish, geo-bounded) — promoted from T3 | ✅ done (`services/pair_rescue.py` + `GET /rescue/pair-matches`; cosine both-ways + geo; writes `pair_rescue_matches`) |
 | engine-rescue-decay | T2 | Shikher | Rescue decay pricing: discount rises as TTL drops (time-decay formula); countdown = price clock | ✅ done (decay recomputed on feed/ops read; base 15%→max 45%) |
-| api-seller-signals | T2 | Shikher | Seller-side return-signal aggregation per SKU+reason → catalog-fix recommendation (surfaced on ops) | partial (SKU+dominant-reason→recommendation on `/ops/high-return-skus`; threshold tuning pending) |
+| api-seller-signals | T2 | Shikher | Seller-side return-signal aggregation per SKU+reason → catalog-fix recommendation (surfaced on ops) | ✅ done (threshold-gated; `/ops/seller-signals` + `/ops/high-return-skus`) |
 | ml-return-cluster | T3 | Bhavya | Stretch: cluster free-text return reasons (NLP) to power seller signals beyond reason codes | pending |
 | api-ops-dashboard | T2 | Shikher | Ops API: high-return SKUs (relay-ml flagged), live rescue TTL list, chain-depth view, seller signals | ✅ done (`/ops/high-return-skus`, `/ops/rescue-live`, `/ops/chain-depth`, `/ops/impact`) |
 | web-ops-dashboard | **UI phase** | Shikher | Ops/seller view: flagged SKUs table + return-reason insight + rescue TTL countdown + chain depth | deferred (UI phase) |
 | api-impact | T2 | Shikher | Impact Wallet net CO₂ via hard-coded per-channel constants (see §7 Carbon model) | ✅ done (`/users/me/impact`; impact_events + green credits on disposition) |
 | api-p2p | T2 | Shikher | One-click P2P list + escrow stub | ✅ done (`POST /p2p/listings`; AI-suggested price default; escrow stub) |
-| api-warranty | T2 | Shikher | Warranty chain records on electronics units | pending |
-| api-lifeledger | T2 | Shikher | Polygon Amoy write + QR verify endpoint | partial (`/lifeledger/{unit}/verify` + event log live; on-chain Amoy write pending) |
+| api-warranty | T2 | Shikher | Warranty chain records on electronics units | ✅ done (`GET /units/{id}/warranty` + repair-event append; seeded on electronics) |
+| api-lifeledger | T2 | Shikher | Polygon Amoy write + QR verify endpoint | ✅ done (swappable `LedgerClient` mock+web3; anchors GRADED/channel events; verify recomputes hash → tamper-evident. Real Amoy write ready, needs funded key) |
 | web-p2p-warranty | T2 | Shikher | Electronics tab: P2P list + warranty + LifeLedger viewer | pending |
 | web-lifeledger-qr | T2 | Shikher | QR scan verify UI | pending |
-| api-credits | T2 | Shikher | Green credits (keep-based, 14-day rule) — P2 supporting | partial (credits written to `green_credit_ledger` on disposition; 14-day unlock + keep-based gating pending) |
+| api-credits | T2 | Shikher | Green credits (keep-based, 14-day rule) — P2 supporting | ✅ done (credits written with `unlock_at = now+14d`; wallet exposes locked vs spendable balance) |
+| api-early-access | T2 | Shikher | Pillar 5 flywheel: credits buy ACCESS not discounts — lifetime-credit tier gates an early-access embargo window on the Rescue feed | ✅ done (`/rescue/feed` embargo filter keyed on lifetime credits; `/users/me/impact` exposes tier; seed gives demo user the tier, buyer none) |
 | ml-bedrock-tiers | T2 | Bhavya | T0–T3 Bedrock escalation in relay-ml (confidence-gated) | pending |
 | ml-multiflags | T3 | Bhavya | Stretch: simplified MultiFlags on ModCloth aggregates | pending |
-| engine-rl-hook | T3 | Shikher | Disposition interface for future RL; rules remain default | pending |
+| engine-rl-hook | T3 | Shikher | Disposition interface for future RL; rules remain default | ✅ done (`Scorer` interface + `RuleScorer` default + `RLScorer` fallback stub; `DISPOSITION_SCORER` env) |
 | deploy-aws | T2 | Shikher | ECS/RDS/S3 deploy path | pending |
 | deploy-railway | T2 | Shikher | Railway compose backup + seeded demo | pending |
 | demo-video | T2 | Both | Record 3-min walkthrough on Railway/AWS | pending |
@@ -160,8 +161,8 @@ Copy status into PR descriptions. **Definition of Done (DoD)** = code merged + a
 
 | Feature | Description |
 |---|---|
-| **Green credits** | Earn on *kept* rescue/exchange (14-day rule) — not purchase volume |
-| **Impact Wallet** | Net CO₂ vs baseline using **hard-coded per-channel constants** (rescue = 2.4 kg saved) — see §7 Carbon model |
+| **Green credits** | Earn on *kept* rescue/exchange (14-day rule) — not purchase volume. **Spend = ACCESS, not discounts:** lifetime credits ≥ threshold unlock early access to the Rescue feed (see §7 Impact Wallet / early-access flywheel) |
+| **Impact Wallet** | Net CO₂ vs baseline using **hard-coded per-channel constants** (rescue = 2.4 kg saved) — see §7 Carbon model. Shows CO₂, locked/spendable balance, and early-access tier |
 
 ### T3 — stretch (Lego add-on; pitch optional)
 
@@ -480,6 +481,20 @@ Trigger when `return_reason IN ('too_small','too_large','fit')` AND exchange SKU
 **Net formula (demo):** `net_co2_saved = channel_const − (delivery_km × 0.12)` where `0.12 kg CO₂/km` is a light-vehicle last-mile factor.
 
 **Net-carbon gate (guardrail):** only surface Rescue when `net_co2_saved > 0` (i.e. `rescue_const(2.4) − delivery_km×0.12 > 0` ⇒ ~≤20 km radius). Replaces the prior "stub constants OK" note.
+
+### Impact Wallet — credits buy ACCESS, not discounts (the flywheel)
+
+> **Why:** green credits with a 14-day hold redeemable as a discount = cashback with a green badge — a loyalty pattern judges have seen since 2019. Making credits buy *access* turns the reward into the system itself.
+
+**Mechanic:** lifetime green credits (locked + unlocked) define a **participation tier**. When `lifetime_credits ≥ RESCUE_EARLY_ACCESS_CREDIT_THRESHOLD` (default 100), the user gets **early access** to the Rescue feed: they see new listings during an embargo window (`RESCUE_EARLY_ACCESS_WINDOW_SECONDS`, default 600 = 10 min) *before* those listings go public. Below the tier, embargoed listings are hidden until the window elapses.
+
+- **Circular** — you rescue items → you earn credits → you get a better position to rescue more. The reward *is* deeper participation in the loop, not a price cut.
+- **Scarce** — combined with decay pricing (price falls as TTL runs out), a 10-minute head start is a real, visible edge on the best listings.
+- **~Zero cost** — it's a filter on `GET /rescue/feed` keyed on the caller's lifetime-credit total; each embargoed listing is flagged `early_access=true` with an `early_access_until` timestamp for the UI badge.
+
+**Kept from the original:** the 2.4 kg CO₂/rescue constant and the locked (14-day) vs spendable balance split. Only the *spend* changed from discount → access.
+
+**Implementation:** `app/services/rescue.py` (`lifetime_credits`, `has_early_access`, `is_embargoed`, `early_access_until`); `GET /rescue/feed` applies the embargo filter; `GET /users/me/impact` returns `lifetime_credits`, `early_access`, `early_access_threshold`. Demo seed: the demo user holds 150 prior credits (early-access tier); the buyer holds 0 — the gap is the demo.
 
 ### Next-owner matching (pgvector — T1)
 

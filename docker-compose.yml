@@ -91,14 +91,15 @@ services:
       context: ../relay-api
     container_name: relay-api
     ports:
-      - "8000:8000"
+      - "${RELAY_API_PORT:-8010}:8010"
     env_file:
       - path: ../relay-api/.env
         required: false
     environment:
-      PORT: 8000
+      PORT: 8010
       DATABASE_URL: postgresql://${POSTGRES_USER:-relay}:${POSTGRES_PASSWORD:-relay}@postgres:5432/${POSTGRES_DB:-relay}
       REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
       ML_SERVICE_URL: http://relay-ml:8001
       ENGINE_SERVICE_URL: http://relay-engine:8002
       # relay-engine logic is live; relay-ml stays mocked until Bhavya's URL is up.
@@ -123,6 +124,7 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-relay}:${POSTGRES_PASSWORD:-relay}@postgres:5432/${POSTGRES_DB:-relay}
       REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
       ML_SERVICE_URL: http://relay-ml:8001
       ENGINE_SERVICE_URL: http://relay-engine:8002
     depends_on:
@@ -136,11 +138,14 @@ services:
     profiles: ["apps"]
     build:
       context: ../relay-web
+      # VITE_ vars are inlined at build time; the browser calls this URL directly.
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
     container_name: relay-web
     ports:
       - "3000:3000"
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8000
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
     depends_on:
       - relay-api
     restart: unless-stopped

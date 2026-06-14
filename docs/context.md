@@ -798,6 +798,8 @@ High-impact additions not fully explored in Session 1:
 
 **Guardrails:** Credits for **kept** rescues, exchanges (avoiding return trip), and **net CO₂ reduction** — never for purchase volume. Show Impact Wallet as *reduction vs baseline*, not badges for consumption.
 
+**Decision (Session 6i) — credits buy ACCESS, not discounts.** Redeeming credits as a discount is cashback with a green skin (a tired 2019 loyalty trope, and it feeds the rebound effect above). Instead, lifetime credits define a **participation tier**: clearing the threshold unlocks **early access to the Rescue feed** (a ~10-min embargo window before listings go public). Circular (rescue → credits → better access to rescue more), scarce (a real head start on decay-priced listings), and near-zero cost (a feed filter). Keep the 2.4 kg CO₂ number + locked/spendable balance; only the *spend* changed. This avoids the rebound effect entirely — the reward is deeper participation in the loop, not consumption. Spec: plan.md §7 "Impact Wallet — credits buy ACCESS".
+
 **Concrete carbon numbers (locked for demo, see plan.md §7):** anchor to ~**15M metric tons CO₂** from US returns/yr (Optoro / reverse-logistics research). Per-channel saved (kg CO₂e): rescue **2.4**, exchange 1.8, p2p 3.1, refurb 2.0, donate 1.5, recycle 0.6. Net formula subtracts `delivery_km × 0.12`. These are hard-coded, shown on the passport/Impact Wallet, and power the Rescue net-carbon gate (only show rescue when net > 0).
 
 ---
