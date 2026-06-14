@@ -37,9 +37,9 @@ Copy status into PR descriptions. **Definition of Done (DoD)** = code merged + a
 | repo-scaffold | T0 | Shikher | Create 5 GitHub repos, branch `main`, `relay-dev` docker-compose, README per repo | ✅ done (repos + compose + relay-dev README) |
 | ml-dataset | T0 | Bhavya | Download HF e-commerce defects + Kaggle fit dataset; document in `relay-ml/data/README.md` | ✅ done (branch `feat/ml-dataset`) |
 | ml-health | T0 | Bhavya | `relay-ml`: FastAPI skeleton, `GET /health`, Docker, `.env.example` | ✅ done (merge PR #1 → main) |
-| api-skeleton | T0 | Shikher | `relay-api`: FastAPI skeleton, Postgres + Redis docker, Alembic init | pending |
-| engine-skeleton | T0 | Shikher | `relay-engine`: Go chi/fiber skeleton, `GET /health` | pending |
-| db-schema | T0 | Shikher | Alembic migration v1 — all §6 tables + pgvector extension (schema-first, before endpoints) | pending |
+| api-skeleton | T0 | Shikher | `relay-api`: FastAPI skeleton, Postgres + Redis docker, Alembic init | ✅ done (pytest 2/2; /health) |
+| engine-skeleton | T0 | Shikher | `relay-engine`: Go chi/fiber skeleton, `GET /health` | ✅ done (go build ok) |
+| db-schema | T0 | Shikher | Alembic migration v1 — all §6 tables + pgvector extension (schema-first, before endpoints) | ✅ done (applied live on pg16: 15 tables, vector+pgcrypto, 2 HNSW indexes) |
 | web-shell | **UI phase** | Shikher | `relay-web`: Next + shadcn — **deferred to final UI phase** (backend-first) | deferred |
 | ml-grade-image | T1 | Bhavya | `POST /grade-image` → ConditionPassport (CNN baseline + optional Bedrock T2) | pending |
 | ml-bedrock-only | T1 | Bhavya | `GRADING_MODE=bedrock_only` escape hatch — real ConditionPassport via Nova Lite from image, **no CNN** (demo-safe; T2 cost/req) | pending |
