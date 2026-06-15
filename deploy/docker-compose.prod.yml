@@ -1,0 +1,168 @@
+# Relay — production (single EC2 + docker compose) orchestration.
+#
+# Standalone (does NOT extend the dev compose) so there are no host-port leaks:
+# only Caddy publishes 80/443; every app/datastore talks on the internal
+# network. AWS creds + Bedrock + S3 come from the EC2 INSTANCE ROLE (boto3's
+# default chain) — leave AWS_ACCESS_KEY_ID/SECRET blank in the .env files.
+#
+# Run from the relay-dev/ directory:
+#   docker compose -f deploy/docker-compose.prod.yml up -d --build
+#
+# Required env (put in relay-dev/.env or export before running):
+#   APP_DOMAIN        app.yourdomain.com          (frontend host)
+#   API_DOMAIN        api.yourdomain.com          (API host)
+#   PUBLIC_API_URL    https://api.yourdomain.com  (baked into the web build)
+#   POSTGRES_PASSWORD <a strong password>
+# Optional (real on-chain anchoring) — set in relay-api/.env:
+#   USE_REAL_LEDGER=true · LIFELEDGER_PRIVATE_KEY=<funded Amoy key> · POLYGON_RPC_URL=...
+
+name: relay-prod
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: relay-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-relay}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-relay}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-relay} -d ${POSTGRES_DB:-relay}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: always
+
+  redis:
+    image: redis:7-alpine
+    container_name: relay-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: always
+
+  relay-ml:
+    build:
+      context: ../relay-ml
+    container_name: relay-ml
+    env_file:
+      - path: ../relay-ml/.env
+        required: false
+    environment:
+      PORT: 8001
+      # Real Bedrock grading via the EC2 instance role (no static keys needed).
+      GRADING_MODE: ${GRADING_MODE:-bedrock_only}
+      AWS_REGION: ${AWS_REGION:-ap-south-1}
+    expose:
+      - "8001"
+    restart: always
+
+  relay-engine:
+    build:
+      context: ../relay-engine
+    container_name: relay-engine
+    environment:
+      PORT: 8002
+      DATABASE_URL: postgres://${POSTGRES_USER:-relay}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-relay}?sslmode=disable
+    expose:
+      - "8002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: always
+
+  relay-api:
+    build:
+      context: ../relay-api
+    container_name: relay-api
+    env_file:
+      - path: ../relay-api/.env
+        required: false
+    environment:
+      PORT: 8010
+      DATABASE_URL: postgresql://${POSTGRES_USER:-relay}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-relay}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      ML_SERVICE_URL: http://relay-ml:8001
+      ENGINE_SERVICE_URL: http://relay-engine:8002
+      USE_MOCK_ENGINE: "false"
+      USE_MOCK_ML: "false"
+      AWS_REGION: ${AWS_REGION:-ap-south-1}
+      # Allow the browser app origin to call the API.
+      CORS_ALLOW_ORIGINS: https://${APP_DOMAIN}
+    expose:
+      - "8010"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: always
+
+  relay-worker:
+    build:
+      context: ../relay-api
+    container_name: relay-worker
+    command: ["celery", "-A", "app.worker", "worker", "--loglevel=info"]
+    env_file:
+      - path: ../relay-api/.env
+        required: false
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-relay}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-relay}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      ML_SERVICE_URL: http://relay-ml:8001
+      ENGINE_SERVICE_URL: http://relay-engine:8002
+      AWS_REGION: ${AWS_REGION:-ap-south-1}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: always
+
+  relay-web:
+    build:
+      context: ../relay-web
+      args:
+        # Baked into the client bundle at build time — must be the PUBLIC API URL.
+        VITE_API_URL: ${PUBLIC_API_URL:?set PUBLIC_API_URL e.g. https://api.yourdomain.com}
+    container_name: relay-web
+    environment:
+      VITE_API_URL: ${PUBLIC_API_URL}
+    expose:
+      - "3000"
+    depends_on:
+      - relay-api
+    restart: always
+
+  caddy:
+    image: caddy:2
+    container_name: relay-caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?set APP_DOMAIN}
+      API_DOMAIN: ${API_DOMAIN:?set API_DOMAIN}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+      - caddyconfig:/config
+    depends_on:
+      - relay-web
+      - relay-api
+    restart: always
+
+volumes:
+  pgdata:
+  redisdata:
+  caddydata:
+  caddyconfig:

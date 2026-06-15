@@ -1,0 +1,37 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "RelayMediaBucket",
+      "Effect": "Allow",
+      "Action": [
+        "s3:ListBucket",
+        "s3:GetBucketLocation"
+      ],
+      "Resource": "arn:aws:s3:::relay-media"
+    },
+    {
+      "Sid": "RelayMediaObjects",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject"
+      ],
+      "Resource": "arn:aws:s3:::relay-media/*"
+    },
+    {
+      "Sid": "RelayBedrockInvoke",
+      "Effect": "Allow",
+      "Action": [
+        "bedrock:InvokeModel",
+        "bedrock:InvokeModelWithResponseStream"
+      ],
+      "Resource": [
+        "arn:aws:bedrock:*::foundation-model/amazon.nova-lite-v1:0",
+        "arn:aws:bedrock:*::foundation-model/amazon.titan-embed-*",
+        "arn:aws:bedrock:*:*:inference-profile/*"
+      ]
+    }
+  ]
+}

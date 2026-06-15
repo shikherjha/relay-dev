@@ -1,0 +1,13 @@
+# Relay reverse proxy — automatic HTTPS (Let's Encrypt) for two hostnames.
+# Caddy provisions + renews certs automatically once the A records resolve to
+# this box and ports 80/443 are open in the security group.
+
+{$APP_DOMAIN} {
+	encode gzip zstd
+	reverse_proxy relay-web:3000
+}
+
+{$API_DOMAIN} {
+	encode gzip zstd
+	reverse_proxy relay-api:8010
+}
