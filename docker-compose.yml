@@ -71,9 +71,10 @@ services:
         required: false
     environment:
       PORT: 8001
-      # No CNN checkpoint shipped in-repo (git-ignored); mock keeps /grade-image
-      # working while /embed, /wish-score, /fit-flags run Bhavya's real models.
-      GRADING_MODE: ${GRADING_MODE:-mock}
+      # Real AI grading by default: bedrock_only grades every request via Nova
+      # Lite (no CNN checkpoint needed). relay-ml/.env carries the AWS creds.
+      # Override to `mock` only for offline/no-credentials rehearsals.
+      GRADING_MODE: ${GRADING_MODE:-bedrock_only}
     restart: unless-stopped
 
   relay-engine:
