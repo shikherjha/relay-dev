@@ -59,7 +59,7 @@ docker compose exec relay-api python scripts/smoke.py
 
 ## To Do (task board)
 
-Copy status into PR descriptions. **Definition of Done (DoD)** = code merged + acceptance criteria met + demo path still works at declared tier.
+Copy status into PR descriptions. **Definition of Done (DoD)** = code merged + acceptance criteria met + the core MVP path still works at declared tier.
 
 > **Build order — backend-first, UI last (LOCKED Session 6c).** Shikher builds in this sequence regardless of tier labels:
 > **1) schema** (DB migrations + contracts) → **2) API endpoint design** (route signatures, request/response) → **3) high-level flow** (services talk: return → grade → disposition → match → credits) → **4) wire all logic** (real engine/ML/persistence, integration-tested via API) → **5) UI last** — all `web-*` tasks are **deferred to a final UI phase**; when the design is ready, Shikher only wires the existing backend to it. Tier labels on `web-*` rows indicate which backend tier they pair with, not when they're built. T1/T2 acceptance is validated via API + integration tests until the UI phase.
@@ -134,9 +134,15 @@ Copy status into PR descriptions. **Definition of Done (DoD)** = code merged + a
 | trackc-exchange | T2 | Shikher | `POST /orders/items/{id}/exchange`: in-window, no ML grade; replacement line (`exchanged_from_id`) + pristine returned unit → Path-A rescue at original/minimal discount + `EXCHANGED` event (§20.5) | ✅ done |
 | trackc-db-0005 | T2 | Shikher | Additive migration 0005: `product_units.size`, `order_items.return_state`, `order_items.exchanged_from_id` (`verification` lives in passport JSON) (§20.6) | ✅ done |
 | trackc-seed-smoke | T2 | Shikher | Seed: size-pristine rescue, `wrong_item` flagged + ops signal, completed exchange (EXCHANGED + pending pickup); `scripts/smoke.py` asserts all five → SMOKE_OK (§20.7) | ✅ done |
+| **— Track D — Finals MVP hardening (§21) —** | | | | |
+| trackd-return-confidence | T2.5 | Shikher | Prevention upgrade: `Return Confidence` / `KeepScore` layer for cart + PDP using user fit history, SKU return health, review/fit signals, bracketing, and safer interventions (§21.1) | planned |
+| trackd-grading-productize | T2.5 | Bhavya | Productize Bedrock grading: prompt registry/versioning, confidence bands, capture-quality gates, grading audit trail, bbox/defect overlays where available (§21.2) | planned |
+| trackd-genie-infra | T2.5 | Bhavya | Genie as marketplace matching engine: multi-stage retrieve→rerank, match reasons, waiting state, price/size/geo/trust/freshness fit, aggressive false-positive rejection (§21.3) | planned |
+| trackd-rescue-dispatch | T2.5 | Shikher | Rescue Dispatch Score: Uber/FoodMatch-style weighted bipartite matching over buyer demand × unit TTL × distance × price acceptance × carbon × failed-claim risk (§21.4) | planned |
+| trackd-mvp-bug-sweep | T2.5 | Shikher | Async MVP bug sweep while Track D lands: lifecycle/state correctness, E2E flow checks, frontend copy, reliability issues found during usage | ongoing |
 | deploy-aws | T2 | Shikher | ECS/RDS/S3 deploy path | pending |
 | deploy-railway | T2 | Shikher | Railway compose backup + seeded demo | pending |
-| demo-video | T2 | Both | Record 3-min walkthrough on Railway/AWS | pending |
+| finals-presentation | T2 | Both | Finals presentation narrative + live walkthrough plan; no separate demo-video requirement unless the rules change | pending |
 | submission | T2 | Shikher | GitHub links, PPT, README, docs | pending |
 
 ---
@@ -164,6 +170,8 @@ Copy status into PR descriptions. **Definition of Done (DoD)** = code merged + a
 | §17 | Environment variables |
 | §18 | Definition of Done + sync cadence |
 | §19 | **Track B — Second Life** (resell + republish, grade-and-price, seeding, seller/buyer UX) |
+| §20 | **Track C — Return-grading decisions** (size returns, verification, wrong-item gate, exchange) |
+| §21 | **Track D — Finals MVP hardening** (prevention, grading, Genie, Rescue dispatch) |
 
 ---
 
@@ -1546,6 +1554,223 @@ The `verification` block needs no column — it lives in `condition_passports.pa
 
 ---
 
+## §21 Track D — Finals MVP hardening
+
+> **Status:** next phase after qualification. Tracks A/B/C made Relay broad and demo-capable; Track D makes it feel like an MVP Amazon could pilot: stronger prevention, better Bedrock inspection, production-grade Genie matching, and dispatch-style Rescue allocation. Shikher and Bhavya can work async because each stream has a clear owner and HTTP/JSON boundary.
+
+### §21.0 Ownership + async contract
+
+| Stream | Owner | Why |
+|---|---|---|
+| **Return Confidence / prevention** | Shikher | Sits in cart/PDP/order context, uses API + seller signals + frontend interventions |
+| **Bedrock grading productization** | Bhavya | ML-owned prompt/version/confidence/audit improvements in `relay-ml` |
+| **Genie marketplace matching** | Bhavya | Matching quality is now ML/product intelligence: retrieval, rerank, explanations, false-positive rejection |
+| **Rescue Dispatch Score** | Shikher | Local routing/allocation belongs with engine/API, TTL, carbon, buyer eligibility, and UI |
+| **Bug sweep / E2E polish** | Shikher | Ongoing as issues appear while both tracks land |
+
+**Rule:** Shikher owns API shape + UI integration for his streams; Bhavya owns `relay-ml` internals + response quality for her streams. If Bhavya needs a new API field, add it as optional first and keep old clients working.
+
+### §21.1 Return Confidence — prevention beyond bracketing
+
+Current prevention is too thin: fit insight + "3 sizes in cart" bracketing is useful, but not enough for finals. We will upgrade it into a non-punitive **Return Confidence** layer: *"how confident are we this order will be kept, and what intervention helps the customer buy one item with confidence?"*
+
+**Research nudge**
+
+| Source | Takeaway for Relay |
+|---|---|
+| **Returnformer** | Predicts returns before payment using user-product bipartite graphs, Node2Vec/topological embeddings, Graph Transformer attention, and global return patterns. We should not clone it fully now, but we should use its framing: prevention is a graph/user-product problem, not one cart rule. |
+| **COP-HGNN return prediction** | Customer, order, and product nodes together predict returns better than isolated features; repeat-customer history matters most. |
+| **Early Bird Catches the Worm** | Fashion returns can be predicted before purchase using product embeddings, body/size embeddings, and engineered checkout features. |
+| **Amazon Fashion Fit Insights** | Amazon uses size-system relationships, reviews, product details, purchase/keep history, and LLM-extracted fit feedback; seller tools surface return health, benchmarks, feedback summaries, and size chart defects. |
+
+**MVP design**
+
+`GET /cart/return-confidence` or an extension to `GET /cart` should return:
+
+```json
+{
+  "confidence_band": "high | medium | low",
+  "keep_score": 0.0,
+  "drivers": [
+    { "type": "size_uncertainty", "label": "First purchase from this brand", "severity": "medium" },
+    { "type": "sku_return_health", "label": "This SKU has elevated too-small returns", "severity": "high" }
+  ],
+  "interventions": [
+    { "type": "size_recommendation", "label": "Buy M only", "action": "remove_extra_sizes" },
+    { "type": "fit_review", "label": "Customers like you say this runs small" }
+  ]
+}
+```
+
+**Signals**
+
+- User: kept vs returned sizes, brand/category fit confidence, return rate, rescue/keep history.
+- Product/SKU: return rate, dominant reason, seller signal, size-chart health, review-derived fit flags.
+- Cart/order: bracketing, duplicate variants, first-time brand, high-risk category, price/impulse pattern.
+- Intervention: one-size recommendation, exchange assurance, lower-return alternative, seller size-chart warning.
+
+**Guardrail:** do not show "you are likely to return this" to the user. Customer copy should be confidence-building: "Buy one with confidence", "Size M is the safer pick", "Fast exchange available if fit is off." Internal ops can see risk drivers.
+
+**Acceptance**
+
+- Cart/PDP exposes `Return Confidence` with at least 3 driver types: bracketing, SKU return health, user fit confidence.
+- UI shows recommended action, not only a warning.
+- Ops can reuse the same SKU return-health drivers so prevention and seller dashboard tell one story.
+
+### §21.2 Bedrock grading productization
+
+We should present Bedrock as the current MVP grading engine. CNN becomes the cost-optimization tier, not the thing we pretend is live when the checkpoint is absent.
+
+**Research nudge**
+
+AWS Nova visual-inspection examples recommend strict JSON, defect criteria in the system prompt, bounding boxes where available, reference/context comparison, low-temperature deterministic inference, schema validation, prompt templates, and human/second-pass review for low-confidence cases. Nova Pro is stronger for difficult visual inspection; Nova Lite is acceptable for fast MVP grading.
+
+**Bhavya scope**
+
+- Add prompt registry/versioning: `grading_fashion_v1`, `grading_electronics_v1`, `resale_pricing_v1`, `match_rank_v1`.
+- Return grading audit metadata: `model_tier_used`, `bedrock_model_id`, `prompt_version`, `confidence_band`, `fallback_reason?`, `expected_context_used`.
+- Add capture-quality gates: blurry, low light, object not visible, missing required angle.
+- Add confidence bands:
+  - `auto_pass`: safe to route/list.
+  - `needs_review`: show passport but mark as lower confidence / require better media for production.
+  - `reject_reupload`: ask for better image/video.
+- Improve multi-image aggregation: front/back/label/damage close-up; worst defect wins, but size/fit returns can still use Track C pristine override.
+- If Nova returns bounding boxes, keep them in `defects[].bbox` so UI can show visual defect overlays later.
+
+**Acceptance**
+
+- Every grade response has stable audit metadata and prompt version.
+- Invalid/low-quality media no longer silently produces overconfident passports.
+- Existing API remains backward-compatible: old clients can ignore new metadata.
+
+### §21.3 Genie as marketplace matching infrastructure
+
+Genie should feel like demand capture for a volatile second-hand marketplace, not a search form. The current retrieve → taxonomy/Bedrock rerank is the right foundation; Track D makes the outcome explainable and stricter.
+
+**Research nudge**
+
+| Marketplace | Relevant pattern |
+|---|---|
+| **Vinted** | Three-stage recommendations: ANN retrieval from two-tower embeddings, explicit preferences like size, implicit preferences from clicks/purchases, then ranking. |
+| **Mercari** | Search uses retrieval plus ML reranking, with freshness boosting because used listings age quickly. |
+| **Etsy** | Candidate generation + ranker optimized for multiple outcomes such as favorite and purchase. |
+| **Facebook Marketplace** | Multiple models predict relevance, seller/content quality, engagement, and policy/integrity risk. |
+
+**Bhavya scope**
+
+Turn Genie into **Demand Radar**:
+
+```text
+final_score =
+  intent_match
+  x size_fit
+  x price_fit
+  x geo_fit
+  x trust_fit
+  x freshness_boost
+  x condition_acceptance
+```
+
+Return match reasons with each match:
+
+```json
+{
+  "score": 0.91,
+  "match_reasons": [
+    { "type": "intent_match", "label": "Exact laptop match", "score": 0.98 },
+    { "type": "price_fit", "label": "Within your INR 45,000 budget", "score": 1.0 },
+    { "type": "condition_fit", "label": "Grade A meets your minimum condition", "score": 0.9 },
+    { "type": "freshness", "label": "Returned 12 minutes ago", "score": 0.8 }
+  ],
+  "rejected_reasons": []
+}
+```
+
+**Waiting state**
+
+If no match passes the floor, Genie should still feel alive:
+
+- "Watching nearby returns."
+- "2 candidates rejected: wrong size, above budget."
+- "Price alert armed."
+- "You will get early access if your Rescue tier qualifies."
+
+**Acceptance**
+
+- No cross-category false positives; wrong-category candidates must be rejected before/after rerank.
+- Matches expose visible reasons: intent, size, price, geo/trust/freshness where available.
+- Empty state is useful and persistent, not "nothing happened."
+
+### §21.4 Rescue Dispatch Score
+
+Return Rescue is strong, but it should move from "nearby feed sorted by time" to "local marketplace dispatch." Use Uber/FoodMatch-style thinking: build a graph of candidate units and candidate buyers, weight each edge by business utility, then allocate early exposure to the best edges first.
+
+**Research nudge**
+
+Ride-hailing and delivery systems often use:
+
+- maximum-weight bipartite matching between supply and demand,
+- edge utility = immediate reward + future-state value,
+- dynamic waiting windows,
+- cancellation/failure penalties,
+- batching/routing signals,
+- pricing as a supply-demand lever.
+
+FoodMatch maps food delivery assignment to graph matching and batching in dynamic road networks. Ride-hailing work uses RL/value functions to account for future spatial imbalance. We do not need full RL now; a transparent utility score is enough for MVP.
+
+**MVP score**
+
+```text
+rescue_dispatch_score =
+  demand_intent
+  + distance_savings
+  + ttl_urgency
+  + price_acceptance
+  + buyer_keep_probability
+  + carbon_saved
+  - failed_claim_risk
+  - chain_depth_risk
+```
+
+**Shikher scope**
+
+- Add `dispatch_score` and `dispatch_reasons` to rescue feed/listing internals.
+- Use early-access windows more intelligently: best-matched buyers see the item first, not just highest-credit users.
+- Keep current feed stable, but sort/label with dispatch reasons: "best local fit", "highest carbon save", "price likely to clear".
+- Connect Pair Rescue to the same utility framing: pair swaps are a special bipartite match with very high carbon score and no payment.
+- Optional later: courier-route boost if a pickup route already passes near a buyer.
+
+**Acceptance**
+
+- Rescue cards can explain why they are surfaced: nearby, high wish intent, price fit, TTL urgent, carbon positive.
+- Dispatch score never violates existing guardrails: eligibility, chain depth, net carbon, status.
+- Existing decay pricing remains, but it becomes one input to dispatch instead of the whole story.
+
+### §21.5 Phase plan
+
+| Phase | Shikher | Bhavya | Integration |
+|---|---|---|---|
+| **D0 — Contract pass** | Draft API shapes for `return-confidence`, rescue dispatch reasons, frontend DTOs | Draft grading metadata + Genie match-reason response shape | Agree optional fields; no breaking contracts |
+| **D1 — Independent build** | Implement Return Confidence + Rescue Dispatch Score with deterministic heuristics | Implement prompt registry/audit + Genie reason/rerank improvements | Both work async; mock/fallbacks keep app running |
+| **D2 — UI + seed** | Add confidence widgets, dispatch labels, richer ops reuse, seed edge cases | Provide stable examples for grading bands + match reasons | Seed must show high/medium/low confidence and accepted/rejected Genie candidates |
+| **D3 — E2E hardening** | Full purchase→prevention→return→route→match→ops flow; bug sweep | Tune prompt/rerank thresholds from observed failures | Final walkthrough becomes live-MVP, not scripted demo |
+
+### §21.6 Finals narrative
+
+Track D lets us say:
+
+> Relay is not a resale page. It is a **product-user-unit graph** that prevents avoidable returns, grades unavoidable returns, routes each physical unit, and dispatches it to the next best owner with trust.
+
+Do not pitch random buzzwords. Pitch the actual intelligence stack:
+
+- Returnformer/HGNN-inspired **Return Confidence** for prevention.
+- Nova/Bedrock **visual inspection** with audit metadata.
+- Vinted/Mercari-style **retrieve → rerank marketplace matching** for Genie.
+- Uber/FoodMatch-style **dispatch scoring** for Return Rescue.
+- Seller Ops closes the loop by feeding SKU issues back into prevention.
+
+---
+
 ## Sequencing summary
 
 ```
@@ -1561,18 +1786,24 @@ M2 (parallel) — TARGET: T2 demo
   Shikher: wishlist + demand-weighted disposition + pair rescue + rescue decay pricing + seller signals + ops/seller dashboard + Impact Wallet + p2p + LifeLedger + warranty UI
   Bhavya:  Bedrock tiers + confidence tuning + /wish-score (logreg) + optional MultiFlags
 
-M3 — Deploy + video + submission
-  Shikher: AWS + Railway + PPT + README
-  Bhavya:  support hard cases + demo assets
+M3 — Finals MVP hardening (Track D)
+  Shikher: Return Confidence + Rescue Dispatch Score + bug sweep + UI integration
+  Bhavya:  Bedrock grading productization + Genie matching/reasons + prompt/rerank tuning
 
-M4 (stretch) — T3
-  Both: RL hook, donation routing, return-reason clustering, analytics
+M4 — Presentation + deployment
+  Shikher: AWS/Railway path + PPT/README/submission + live walkthrough reliability
+  Bhavya:  support grading/matching hard cases and explain ML stack clearly
+
+M5 (stretch)
+  Both: full graph model, RL dispatch, donation routing, analytics
 ```
 
 ---
 
-*Last updated: 2026-06-14 (Session 6 — bracketing(≥3), ops persona, carbon constants, pgvector-T1, Bedrock-only grading; + demand-weighted disposition, wish-score, Pair Rescue, seller signals, rescue decay pricing; embeddings/wish-score assigned to Bhavya) · Maintained alongside [`context.md`](./context.md)*
+*Last updated: 2026-06-27 (Session 15 — finals MVP hardening / Track D added after qualification) · Maintained alongside [`context.md`](./context.md)*
 
 *Session 7 — **Track B (Second Life: resell + republish)** added (§19); new relay-ml `POST /grade-and-price` contract for Bhavya (§5 + §8 B4.2); resale pricing unified with rescue + `price_fit` (§19.6); `resale_listings` / `order_items.delivered_at` / `products.image_url` data model (§6); real `seed_assets/` seeding spec (§19.7); seller/buyer UX (§19.8–19.9). Task board: all ML(Bedrock) / backend / seeding / frontend-migration rows flipped to ✅ done; Track B rows added as specced/in-progress; **deploy + demo + submission left pending (honest).***
 
 *Session 8 — **Track C — Return-grading decisions** added (§20), backend built to the LOCKED frontend shapes: (1a) size/fit return = pristine asset → Grade-A boost + minimal-discount Path-A listing; (1b) next-owner size-match gate in `matching.py` (size eq OR fit confidence > 0.7); (2) expected-context `verification` — additive `expected_size/color/title` Form fields enrich the **same** grade prompt (no extra image/call — **relay-ml change flagged for Bhavya**) → locked `verification` block on ConditionPassport + ResaleListing, with a relay-api fallback; (3) `wrong_item` fully gated (flagged return-to-seller, no grade/anchor/listing) + pick-pack seller signal; (4) new `POST /orders/items/{id}/exchange` (in-window, no ML grade, replacement line + pristine returned unit → Path-A rescue + `EXCHANGED` event). Additive migration `0005` (`product_units.size`, `order_items.return_state`, `order_items.exchanged_from_id`; `verification` in passport JSON). Seed + `scripts/smoke.py` extended for all five → **SMOKE_OK**. Task board: Track C rows ✅ done.*
+
+*Session 15 — **Track D — Finals MVP hardening** added (§21) after top-28 qualification. New async split: Shikher owns Return Confidence/prevention + Rescue Dispatch Score + bug sweep; Bhavya owns Bedrock grading productization + Genie marketplace matching/reasons. Research nudges captured from Returnformer, COP-HGNN, Early Bird return prediction, Amazon Fit Insights, AWS Nova visual inspection, Vinted/Mercari/Etsy/Facebook Marketplace ranking, and Uber/FoodMatch dispatch literature. `demo-video` row replaced by finals presentation/live walkthrough planning because finals now require presenting the solution as an MVP, not recording another demo.*
